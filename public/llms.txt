@@ -1,0 +1,11 @@
+# NeonFlow Commerce
+
+> Plataforma futurista para vendas online e vitrine virtual com design neon, glassmorphism e IA.
+
+NeonFlow Commerce ajuda lojistas a montar uma vitrine premium, divulgar produtos, gerar leads via WhatsApp e medir conversões em tempo real.
+
+## Pages
+- [Início](/): vitrine principal com destaques, ofertas e tendências
+- [Produtos](/produtos): catálogo completo
+- [Vitrine Virtual](/vitrine): showroom imersivo
+- [Promoções](/promocoes): ofertas ativas
