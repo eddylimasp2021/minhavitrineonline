@@ -1,0 +1,27 @@
+{
+  "name": "NeonFlow Commerce",
+  "short_name": "NeonFlow",
+  "description": "Plataforma futurista de vendas e vitrine virtual com design neon, glassmorphism e IA.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050816",
+  "theme_color": "#00F5FF",
+  "categories": ["shopping", "business", "lifestyle"],
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
