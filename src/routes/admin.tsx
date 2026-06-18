@@ -16,12 +16,12 @@ export const Route = createFileRoute("/admin")({
 });
 
 const kpis = [
-  { label: "Visitas", value: "12.4k", delta: "+18%", icon: Eye, color: "neon-cyan" },
-  { label: "Cliques", value: "4.8k", delta: "+12%", icon: MousePointerClick, color: "neon-purple" },
-  { label: "Conversões", value: "684", delta: "+9%", icon: ShoppingCart, color: "neon-green" },
-  { label: "Leads", value: "312", delta: "+24%", icon: Users, color: "neon-magenta" },
-  { label: "Compartilhamentos", value: "1.2k", delta: "+5%", icon: Share2, color: "neon-yellow" },
-  { label: "Campanhas ativas", value: "7", delta: "+2", icon: TrendingUp, color: "neon-cyan" },
+  { label: "Visitas", value: "12.4k", delta: "+18%", icon: Eye, color: "text-neon-cyan" },
+  { label: "Cliques", value: "4.8k", delta: "+12%", icon: MousePointerClick, color: "text-neon-purple" },
+  { label: "Conversões", value: "684", delta: "+9%", icon: ShoppingCart, color: "text-neon-green" },
+  { label: "Leads", value: "312", delta: "+24%", icon: Users, color: "text-neon-magenta" },
+  { label: "Compartilhamentos", value: "1.2k", delta: "+5%", icon: Share2, color: "text-neon-yellow" },
+  { label: "Campanhas ativas", value: "7", delta: "+2", icon: TrendingUp, color: "text-neon-cyan" },
 ];
 
 function AdminPage() {
@@ -46,7 +46,7 @@ function AdminPage() {
             className="rounded-2xl border border-white/10 glass p-4"
           >
             <div className="flex items-center justify-between">
-              <k.icon className={`h-4 w-4 text-${k.color}`} />
+              <k.icon className={`h-4 w-4 ${k.color}`} />
               <span className="text-[10px] font-semibold text-neon-green">
                 {k.delta}
               </span>

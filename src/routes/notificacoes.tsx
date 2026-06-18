@@ -12,19 +12,19 @@ const items = [
     title: "Oferta relâmpago no Neon Runner X9",
     desc: "30% off por mais 2h. Não perca.",
     time: "agora",
-    accent: "neon-magenta",
+    dot: "bg-neon-magenta shadow-[0_0_10px_var(--neon-magenta)]",
   },
   {
     title: "Sua vitrine recebeu 124 visitas hoje",
     desc: "Crescimento de +18% em relação a ontem.",
     time: "2h",
-    accent: "neon-cyan",
+    dot: "bg-neon-cyan shadow-[0_0_10px_var(--neon-cyan)]",
   },
   {
     title: "Novo lead via WhatsApp",
     desc: "Cliente perguntou sobre Aura Wave Pro.",
     time: "ontem",
-    accent: "neon-green",
+    dot: "bg-neon-green shadow-[0_0_10px_var(--neon-green)]",
   },
 ];
 
@@ -51,9 +51,7 @@ function NotificacoesPage() {
             key={n.title}
             className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-4 rounded-2xl border border-white/10 glass p-4"
           >
-            <span
-              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full bg-${n.accent} shadow-[0_0_10px_var(--${n.accent})]`}
-            />
+            <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.dot}`} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{n.title}</p>
               <p className="text-xs text-muted-foreground">{n.desc}</p>
