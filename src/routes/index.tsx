@@ -19,11 +19,11 @@ export const Route = createFileRoute("/")({
         content:
           "Plataforma neon para vendas online com vitrine virtual, IA para descrições e integração WhatsApp.",
       },
-      { property: "og:title", content: "NeonFlow Commerce" },
+      { property: "og:title", content: "NeonFlow Commerce — Vitrine Futurista de Vendas" },
       {
         property: "og:description",
         content:
-          "Vitrine virtual futurista com design neon, glassmorphism e checkout direto via WhatsApp.",
+          "Plataforma neon para vendas online com vitrine virtual, IA para descrições e integração WhatsApp.",
       },
     ],
   }),

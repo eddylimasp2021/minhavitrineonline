@@ -81,29 +81,32 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5",
       },
-      { title: "NeonFlow Commerce — Vitrine Futurista" },
+      { title: "NeonFlow Commerce — Vitrine Futurista de Vendas" },
       {
         name: "description",
         content:
-          "Plataforma futurista neon para vendas online, vitrine virtual e divulgação com IA.",
+          "Plataforma neon para vendas online com vitrine virtual, IA para descrições e integração WhatsApp.",
       },
       { name: "theme-color", content: "#050816" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "NeonFlow" },
-      { property: "og:title", content: "NeonFlow Commerce" },
+      { property: "og:title", content: "NeonFlow Commerce — Vitrine Futurista de Vendas" },
       {
         property: "og:description",
         content:
-          "Vitrine virtual futurista com design neon, glassmorphism e checkout via WhatsApp.",
+          "Plataforma neon para vendas online com vitrine virtual, IA para descrições e integração WhatsApp.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "NeonFlow Commerce — Vitrine Futurista de Vendas" },
+      { name: "twitter:description", content: "Plataforma neon para vendas online com vitrine virtual, IA para descrições e integração WhatsApp." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/UDbiTYuq3KW7CzP585UlSh3v8ch2/social-images/social-1785078087263-logo.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/UDbiTYuq3KW7CzP585UlSh3v8ch2/social-images/social-1785078087263-logo.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", href: "/icon-512.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/icon-512.png" },
       {
         rel: "preconnect",
