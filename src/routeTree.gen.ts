@@ -17,8 +17,13 @@ import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
-import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VSlugRouteImport } from './routes/v.$slug'
+import { Route as ApiGenerateProductInfoRouteImport } from './routes/api/generate-product-info'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminProdutosRouteImport } from './routes/_authenticated/admin/produtos'
 
 const VitrineRoute = VitrineRouteImport.update({
   id: '/vitrine',
@@ -60,9 +65,13 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -70,10 +79,31 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VSlugRoute = VSlugRouteImport.update({
+  id: '/v/$slug',
+  path: '/v/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGenerateProductInfoRoute = ApiGenerateProductInfoRouteImport.update({
+  id: '/api/generate-product-info',
+  path: '/api/generate-product-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminProdutosRoute =
+  AuthenticatedAdminProdutosRouteImport.update({
+    id: '/admin/produtos',
+    path: '/admin/produtos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -82,10 +112,14 @@ export interface FileRoutesByFullPath {
   '/promocoes': typeof PromocoesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
+  '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
+  '/v/$slug': typeof VSlugRoute
+  '/admin/produtos': typeof AuthenticatedAdminProdutosRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -94,11 +128,16 @@ export interface FileRoutesByTo {
   '/promocoes': typeof PromocoesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
+  '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
+  '/v/$slug': typeof VSlugRoute
+  '/admin/produtos': typeof AuthenticatedAdminProdutosRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -107,12 +146,16 @@ export interface FileRoutesById {
   '/promocoes': typeof PromocoesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
+  '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
+  '/v/$slug': typeof VSlugRoute
+  '/_authenticated/admin/produtos': typeof AuthenticatedAdminProdutosRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
+    | '/auth'
     | '/configuracoes'
     | '/favoritos'
     | '/notificacoes'
@@ -121,10 +164,14 @@ export interface FileRouteTypes {
     | '/promocoes'
     | '/sitemap.xml'
     | '/vitrine'
+    | '/api/generate-product-info'
+    | '/v/$slug'
+    | '/admin/produtos'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
+    | '/auth'
     | '/configuracoes'
     | '/favoritos'
     | '/notificacoes'
@@ -133,10 +180,15 @@ export interface FileRouteTypes {
     | '/promocoes'
     | '/sitemap.xml'
     | '/vitrine'
+    | '/api/generate-product-info'
+    | '/v/$slug'
+    | '/admin/produtos'
+    | '/admin'
   id:
     | '__root__'
     | '/'
-    | '/admin'
+    | '/_authenticated'
+    | '/auth'
     | '/configuracoes'
     | '/favoritos'
     | '/notificacoes'
@@ -145,11 +197,16 @@ export interface FileRouteTypes {
     | '/promocoes'
     | '/sitemap.xml'
     | '/vitrine'
+    | '/api/generate-product-info'
+    | '/v/$slug'
+    | '/_authenticated/admin/produtos'
+    | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FavoritosRoute: typeof FavoritosRoute
   NotificacoesRoute: typeof NotificacoesRoute
@@ -158,6 +215,8 @@ export interface RootRouteChildren {
   PromocoesRoute: typeof PromocoesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VitrineRoute: typeof VitrineRoute
+  ApiGenerateProductInfoRoute: typeof ApiGenerateProductInfoRoute
+  VSlugRoute: typeof VSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -218,11 +277,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -232,12 +298,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/v/$slug': {
+      id: '/v/$slug'
+      path: '/v/$slug'
+      fullPath: '/v/$slug'
+      preLoaderRoute: typeof VSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/generate-product-info': {
+      id: '/api/generate-product-info'
+      path: '/api/generate-product-info'
+      fullPath: '/api/generate-product-info'
+      preLoaderRoute: typeof ApiGenerateProductInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/produtos': {
+      id: '/_authenticated/admin/produtos'
+      path: '/admin/produtos'
+      fullPath: '/admin/produtos'
+      preLoaderRoute: typeof AuthenticatedAdminProdutosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminProdutosRoute: typeof AuthenticatedAdminProdutosRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminProdutosRoute: AuthenticatedAdminProdutosRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   FavoritosRoute: FavoritosRoute,
   NotificacoesRoute: NotificacoesRoute,
@@ -246,6 +354,8 @@ const rootRouteChildren: RootRouteChildren = {
   PromocoesRoute: PromocoesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VitrineRoute: VitrineRoute,
+  ApiGenerateProductInfoRoute: ApiGenerateProductInfoRoute,
+  VSlugRoute: VSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
