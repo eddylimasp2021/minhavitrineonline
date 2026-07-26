@@ -31,14 +31,15 @@ export const getAdminStats = createServerFn({ method: "POST" })
       .lte("created_at", to);
     if (error) throw new Error(error.message);
 
-    const totals = { page_view: 0, product_view: 0, product_click: 0, favorite_add: 0, whatsapp_click: 0, share_click: 0, checkout_start: 0, conversion: 0 } as Record<string, number>;
-    const byDay = new Map<string, Record<string, number>>();
+    const totals: Record<string, number> = { page_view: 0, product_view: 0, product_click: 0, favorite_add: 0, whatsapp_click: 0, share_click: 0, checkout_start: 0, conversion: 0 };
+    type DayBucket = { views: number; clicks: number; favorites: number; wa: number };
+    const byDay = new Map<string, DayBucket>();
     const byProduct = new Map<string, number>();
 
     for (const r of rows ?? []) {
       totals[r.event_type] = (totals[r.event_type] ?? 0) + 1;
       const day = r.created_at.slice(0, 10);
-      const bucket = byDay.get(day) ?? { views: 0, clicks: 0, favorites: 0, wa: 0 };
+      const bucket: DayBucket = byDay.get(day) ?? { views: 0, clicks: 0, favorites: 0, wa: 0 };
       if (r.event_type === "page_view" || r.event_type === "product_view") bucket.views += 1;
       else if (r.event_type === "product_click") bucket.clicks += 1;
       else if (r.event_type === "favorite_add") bucket.favorites += 1;
