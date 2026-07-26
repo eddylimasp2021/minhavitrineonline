@@ -18,7 +18,6 @@ import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VSlugRouteImport } from './routes/v.$slug'
@@ -71,11 +70,6 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -109,7 +103,6 @@ const AuthenticatedAdminProdutosRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
@@ -126,7 +119,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AuthenticatedAdminIndexRoute
   '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
@@ -139,12 +131,12 @@ export interface FileRoutesByTo {
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
   '/admin/produtos': typeof AuthenticatedAdminProdutosRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
@@ -163,7 +155,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/auth'
     | '/configuracoes'
     | '/favoritos'
@@ -180,7 +171,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/auth'
     | '/configuracoes'
     | '/favoritos'
@@ -193,11 +183,11 @@ export interface FileRouteTypes {
     | '/api/generate-product-info'
     | '/v/$slug'
     | '/admin/produtos'
+    | '/admin'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/admin'
     | '/auth'
     | '/configuracoes'
     | '/favoritos'
@@ -216,7 +206,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FavoritosRoute: typeof FavoritosRoute
@@ -295,13 +284,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -363,7 +345,6 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   FavoritosRoute: FavoritosRoute,
