@@ -19,7 +19,7 @@ export function TopBar() {
   const initials = (user?.user_metadata?.full_name ?? user?.email ?? "?")
     .toString()
     .split(" ")
-    .map((s) => s[0])
+    .map((s: string) => s[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();

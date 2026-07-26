@@ -97,7 +97,7 @@ function PublicProduct() {
 
           {p.hashtags?.length ? (
             <div className="mt-4 flex flex-wrap gap-2">
-              {p.hashtags.map((h) => (
+              {p.hashtags.map((h: string) => (
                 <span key={h} className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-neon-cyan">#{h}</span>
               ))}
             </div>
