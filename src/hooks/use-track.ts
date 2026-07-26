@@ -34,7 +34,7 @@ export async function track(
       product_id: opts.product_id ?? null,
       path: opts.path ?? window.location.pathname,
       session_id: sid(),
-      metadata: opts.metadata ?? null,
+      metadata: (opts.metadata ?? null) as never,
     });
   } catch {
     /* silent */
