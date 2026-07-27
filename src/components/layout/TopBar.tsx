@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Search, User, LogOut, LayoutDashboard, Loader2 } from "lucide-react";
 import { useAuth, signOut } from "@/hooks/use-auth";
 import { useState, useRef, useEffect } from "react";
@@ -6,7 +6,9 @@ import { useState, useRef, useEffect } from "react";
 export function TopBar() {
   const { user, isAdmin, loading } = useAuth();
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -36,14 +38,22 @@ export function TopBar() {
           </span>
         </Link>
 
-        <div className="relative min-w-0 flex-1">
+        <form
+          className="relative min-w-0 flex-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            navigate({ to: "/produtos", search: { q: q.trim() || undefined } });
+          }}
+        >
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar produtos, marcas, categorias…"
             className="h-10 w-full rounded-full border border-white/10 bg-white/5 pl-10 pr-4 text-sm placeholder:text-muted-foreground focus:border-neon-cyan/60 focus:outline-none focus:ring-2 focus:ring-neon-cyan/30"
           />
-        </div>
+        </form>
 
         <Link
           to="/notificacoes"

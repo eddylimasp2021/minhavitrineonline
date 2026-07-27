@@ -1,9 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProductCard } from "@/components/product/ProductCard";
 import { categories, products } from "@/lib/mock-data";
+import { Search, X } from "lucide-react";
+
+type ProdSearch = { q?: string; cat?: string };
 
 export const Route = createFileRoute("/produtos")({
+  validateSearch: (s: Record<string, unknown>): ProdSearch => ({
+    q: typeof s.q === "string" ? s.q : undefined,
+    cat: typeof s.cat === "string" ? s.cat : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Produtos — NeonFlow Commerce" },
@@ -14,6 +21,16 @@ export const Route = createFileRoute("/produtos")({
 });
 
 function ProdutosPage() {
+  const { q, cat } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+
+  const query = (q ?? "").trim().toLowerCase();
+  const filtered = products.filter((p) => {
+    if (cat && p.categoryId !== cat) return false;
+    if (query && !`${p.title} ${p.category} ${p.description}`.toLowerCase().includes(query)) return false;
+    return true;
+  });
+
   return (
     <AppShell>
       <header className="animate-fade-up">
@@ -25,23 +42,61 @@ function ProdutosPage() {
         </p>
       </header>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <button className="btn-ghost-neon !py-2 !px-4 text-xs">Todos</button>
-        {categories.map((c) => (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          navigate({ search: (prev) => ({ ...prev, q: (fd.get("q") as string) || undefined }) });
+        }}
+        className="relative mt-6"
+      >
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          name="q"
+          defaultValue={q ?? ""}
+          placeholder="Buscar produtos…"
+          className="h-11 w-full rounded-full border border-white/10 bg-white/5 pl-11 pr-4 text-sm placeholder:text-muted-foreground focus:border-neon-cyan/60 focus:outline-none focus:ring-2 focus:ring-neon-cyan/30"
+        />
+      </form>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          onClick={() => navigate({ search: (prev) => ({ ...prev, cat: undefined }) })}
+          className={`rounded-full px-4 py-2 text-xs transition ${!cat ? "border border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan" : "border border-white/10 bg-white/5 hover:border-neon-cyan/40 hover:text-neon-cyan"}`}
+        >
+          Todos
+        </button>
+        {categories.map((c) => {
+          const active = cat === c.id;
+          return (
+            <button
+              key={c.id}
+              onClick={() => navigate({ search: (prev) => ({ ...prev, cat: active ? undefined : c.id }) })}
+              className={`rounded-full px-4 py-2 text-xs transition ${active ? "border border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan" : "border border-white/10 bg-white/5 hover:border-neon-cyan/40 hover:text-neon-cyan"}`}
+            >
+              {c.icon} {c.label}
+            </button>
+          );
+        })}
+        {(q || cat) && (
           <button
-            key={c.id}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs transition hover:border-neon-cyan/40 hover:text-neon-cyan"
+            onClick={() => navigate({ search: {} })}
+            className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
           >
-            {c.icon} {c.label}
+            <X className="h-3 w-3" /> Limpar
           </button>
-        ))}
+        )}
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {[...products, ...products].map((p, i) => (
-          <ProductCard key={p.id + i} product={p} />
-        ))}
-      </div>
+      {filtered.length === 0 ? (
+        <p className="mt-16 text-center text-muted-foreground">Nenhum produto encontrado.</p>
+      ) : (
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
+      )}
     </AppShell>
   );
 }
