@@ -100,7 +100,9 @@ Sem markdown, sem \`\`\`, apenas o objeto JSON puro. Português brasileiro.`,
           const txt = await res.text();
           if (res.status === 429) return Response.json({ error: "Limite de IA atingido, tente em alguns instantes." }, { status: 429 });
           if (res.status === 402) return Response.json({ error: "Créditos de IA esgotados." }, { status: 402 });
-          return Response.json({ error: txt }, { status: res.status });
+          let msg = txt;
+          try { msg = JSON.parse(txt)?.error?.message ?? txt; } catch { /* keep */ }
+          return Response.json({ error: `IA rejeitou a imagem: ${msg}` }, { status: res.status });
         }
 
         const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
