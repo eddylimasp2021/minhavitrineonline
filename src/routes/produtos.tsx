@@ -1,13 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProductCard } from "@/components/product/ProductCard";
 import { categories, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
 import { listPublicProducts } from "@/lib/public.functions";
-import { Search, X, Loader2 } from "lucide-react";
+import { Search, X, Loader2, PackageSearch } from "lucide-react";
 
 type ProdSearch = { q?: string; cat?: string };
 const PAGE_SIZE = 12;
+const DEBOUNCE_MS = 350;
 
 export const Route = createFileRoute("/produtos")({
   validateSearch: (s: Record<string, unknown>): ProdSearch => ({
@@ -26,9 +28,43 @@ export const Route = createFileRoute("/produtos")({
   component: ProdutosPage,
 });
 
+function ProductSkeleton() {
+  return (
+    <div className="neon-card overflow-hidden">
+      <div className="aspect-square animate-pulse bg-white/5" />
+      <div className="space-y-3 p-4">
+        <div className="h-3 w-1/3 animate-pulse rounded bg-white/5" />
+        <div className="h-4 w-4/5 animate-pulse rounded bg-white/10" />
+        <div className="h-3 w-full animate-pulse rounded bg-white/5" />
+        <div className="h-3 w-2/3 animate-pulse rounded bg-white/5" />
+        <div className="flex items-center justify-between pt-2">
+          <div className="h-6 w-20 animate-pulse rounded bg-white/10" />
+          <div className="h-9 w-24 animate-pulse rounded-full bg-white/5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProdutosPage() {
   const { q, cat } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+
+  // Local input state, debounced -> URL search param.
+  const [inputValue, setInputValue] = useState(q ?? "");
+  useEffect(() => {
+    setInputValue(q ?? "");
+  }, [q]);
+
+  useEffect(() => {
+    const current = q ?? "";
+    if (inputValue === current) return;
+    const t = setTimeout(() => {
+      const next = inputValue.trim();
+      navigate({ search: (prev: ProdSearch) => ({ ...prev, q: next || undefined }) });
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [inputValue, q, navigate]);
 
   const query = useInfiniteQuery({
     queryKey: ["public-products", q ?? "", cat ?? ""],
@@ -38,6 +74,7 @@ function ProdutosPage() {
         data: { q, category: cat, limit: PAGE_SIZE, offset: pageParam as number },
       }),
     getNextPageParam: (last) => last.nextOffset ?? undefined,
+    placeholderData: keepPreviousData,
   });
 
   const rows = query.data?.pages.flatMap((p) => p.items) ?? [];
@@ -53,6 +90,26 @@ function ProdutosPage() {
     whatsapp: r.whatsapp ?? undefined,
   }));
 
+  // Infinite scroll sentinel.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !query.hasNextPage) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !query.isFetchingNextPage) {
+          query.fetchNextPage();
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [query.hasNextPage, query.isFetchingNextPage, query.fetchNextPage]);
+
+  const isInitialLoading = query.isLoading || (query.isFetching && rows.length === 0);
+  const showEndMessage = !query.hasNextPage && items.length > 0 && !query.isFetching;
+
   return (
     <AppShell>
       <header className="animate-fade-up">
@@ -64,21 +121,25 @@ function ProdutosPage() {
         </p>
       </header>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const fd = new FormData(e.currentTarget);
-          navigate({ search: (prev: ProdSearch) => ({ ...prev, q: (fd.get("q") as string) || undefined }) });
-        }}
-        className="relative mt-6"
-      >
+      <form onSubmit={(e) => e.preventDefault()} className="relative mt-6">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           name="q"
-          defaultValue={q ?? ""}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
           placeholder="Buscar produtos…"
-          className="h-11 w-full rounded-full border border-white/10 bg-white/5 pl-11 pr-4 text-sm placeholder:text-muted-foreground focus:border-neon-cyan/60 focus:outline-none focus:ring-2 focus:ring-neon-cyan/30"
+          className="h-11 w-full rounded-full border border-white/10 bg-white/5 pl-11 pr-11 text-sm placeholder:text-muted-foreground focus:border-neon-cyan/60 focus:outline-none focus:ring-2 focus:ring-neon-cyan/30"
         />
+        {inputValue && (
+          <button
+            type="button"
+            aria-label="Limpar busca"
+            onClick={() => setInputValue("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </form>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -102,7 +163,7 @@ function ProdutosPage() {
         })}
         {(q || cat) && (
           <button
-            onClick={() => navigate({ search: {} })}
+            onClick={() => { setInputValue(""); navigate({ search: {} }); }}
             className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
           >
             <X className="h-3 w-3" /> Limpar
@@ -110,12 +171,30 @@ function ProdutosPage() {
         )}
       </div>
 
-      {query.isLoading ? (
-        <div className="mt-16 grid place-items-center text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
+      {isInitialLoading ? (
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+            <ProductSkeleton key={i} />
+          ))}
         </div>
       ) : items.length === 0 ? (
-        <p className="mt-16 text-center text-muted-foreground">Nenhum produto encontrado.</p>
+        <div className="mt-16 grid place-items-center gap-3 text-center">
+          <div className="grid h-16 w-16 place-items-center rounded-full border border-white/10 bg-white/5 text-neon-cyan">
+            <PackageSearch className="h-7 w-7" />
+          </div>
+          <h2 className="font-display text-lg font-bold">Nada encontrado</h2>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {q || cat ? "Tente outra palavra-chave ou remova os filtros." : "Ainda não há produtos publicados na vitrine."}
+          </p>
+          {(q || cat) && (
+            <button
+              onClick={() => { setInputValue(""); navigate({ search: {} }); }}
+              className="mt-2 inline-flex items-center gap-1 rounded-full border border-neon-cyan/40 bg-neon-cyan/10 px-4 py-2 text-xs text-neon-cyan hover:border-neon-cyan/70"
+            >
+              <X className="h-3 w-3" /> Limpar filtros
+            </button>
+          )}
+        </div>
       ) : (
         <>
           <div className="mt-6 text-xs text-muted-foreground">
@@ -125,22 +204,32 @@ function ProdutosPage() {
             {items.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
+            {query.isFetchingNextPage &&
+              Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={`sk-${i}`} />)}
           </div>
-          {query.hasNextPage && (
+
+          <div ref={sentinelRef} aria-hidden className="h-1 w-full" />
+
+          {query.hasNextPage && !query.isFetchingNextPage && (
             <div className="mt-8 grid place-items-center">
               <button
                 onClick={() => query.fetchNextPage()}
-                disabled={query.isFetchingNextPage}
                 className="btn-ghost-neon"
               >
-                {query.isFetchingNextPage ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
-                  </>
-                ) : (
-                  "Carregar mais"
-                )}
+                Carregar mais
               </button>
+            </div>
+          )}
+          {query.isFetchingNextPage && (
+            <div className="mt-8 grid place-items-center text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          )}
+          {showEndMessage && (
+            <div className="mt-10 flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-white/10" />
+              <span>Você chegou ao fim — {total} {total === 1 ? "produto" : "produtos"}</span>
+              <span className="h-px flex-1 bg-white/10" />
             </div>
           )}
         </>
