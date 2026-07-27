@@ -18,6 +18,7 @@ export type EventType =
   | "product_view"
   | "product_click"
   | "favorite_add"
+  | "favorite_remove"
   | "whatsapp_click"
   | "share_click"
   | "checkout_start"

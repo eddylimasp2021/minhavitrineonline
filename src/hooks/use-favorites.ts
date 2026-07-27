@@ -37,12 +37,13 @@ export function useFavorites() {
           .eq("user_id", user.id)
           .eq("product_id", product_id);
         if (error) throw error;
+        track("favorite_remove", { product_id, metadata: { source: "remote" } });
       } else {
         const { error } = await supabase
           .from("favorites")
           .insert({ user_id: user.id, product_id });
         if (error) throw error;
-        track("favorite_add", { product_id });
+        track("favorite_add", { product_id, metadata: { source: "remote" } });
       }
     },
     onMutate: async (product_id: string) => {
