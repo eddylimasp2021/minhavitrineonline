@@ -3,11 +3,6 @@ import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const AnalyticsInput = z.object({
-  from: z.string(), // ISO
-  to: z.string(),
-});
-
 function serverClient() {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
   return createClient<Database>(process.env.SUPABASE_URL!, key, {
@@ -38,4 +33,39 @@ export const getPublicProductBySlug = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     return prod;
+  });
+
+/**
+ * Public read: list published products for the catalog / home / vitrine.
+ * Optional search (q) matches title / description / category; optional category label filter.
+ */
+export const listPublicProducts = createServerFn({ method: "GET" })
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        q: z.string().optional(),
+        category: z.string().optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      })
+      .parse(i ?? {}),
+  )
+  .handler(async ({ data }) => {
+    const supa = serverClient();
+    let query = supa
+      .from("products")
+      .select("id, slug, title, description, price, image_url, hashtags, whatsapp, category, created_at")
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+      .limit(data.limit ?? 60);
+
+    if (data.category) query = query.eq("category", data.category);
+    if (data.q && data.q.trim()) {
+      const term = data.q.trim().replace(/[%,]/g, " ");
+      query = query.or(
+        `title.ilike.%${term}%,description.ilike.%${term}%,category.ilike.%${term}%`,
+      );
+    }
+    const { data: rows, error } = await query;
+    if (error) throw new Error(error.message);
+    return rows ?? [];
   });

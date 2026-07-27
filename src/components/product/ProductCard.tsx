@@ -1,9 +1,10 @@
 import { Heart, MessageCircle, QrCode, Share2, ShoppingBag, Star, X } from "lucide-react";
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { formatBRL, whatsappLink, type Product } from "@/lib/mock-data";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { formatBRL, whatsappLink, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
 import { useLocalFavorites } from "@/hooks/use-local-favorites";
+import { useFavorites } from "@/hooks/use-favorites";
 
 const tagStyles: Record<NonNullable<Product["tag"]>, string> = {
   novo: "bg-neon-green/15 text-neon-green border-neon-green/40",
@@ -21,12 +22,27 @@ export function ProductCard({ product }: { product: Product }) {
   const discount = product.oldPrice
     ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
     : 0;
-  const { has, toggle } = useLocalFavorites();
-  const isFav = has(product.id);
+  const local = useLocalFavorites();
+  const remote = useFavorites();
+  const isFav = remote.isAuthed ? remote.has(product.id) : local.has(product.id);
   const [qrOpen, setQrOpen] = useState(false);
+  const navigate = useNavigate();
 
   const productUrl = typeof window !== "undefined" ? `${window.location.origin}/v/${product.slug}` : `/v/${product.slug}`;
   const waUrl = whatsappLink(product);
+  const image = product.image || PLACEHOLDER_IMAGE;
+
+  function toggleFav(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (remote.isAuthed) {
+      remote.toggle(product.id);
+      if (!isFav) track("favorite_add", { product_id: product.id });
+    } else {
+      local.toggle(product.id);
+      if (!isFav) track("favorite_add", { product_id: product.id });
+    }
+  }
 
   async function handleShare(e: React.MouseEvent) {
     e.preventDefault();
@@ -46,7 +62,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="neon-card group flex flex-col overflow-hidden">
       <Link to="/v/$slug" params={{ slug: product.slug }} className="relative block aspect-square overflow-hidden" onClick={() => track("product_click", { product_id: product.id })}>
         <img
-          src={product.image}
+          src={image}
           alt={product.title}
           loading="lazy"
           width={768}
@@ -66,7 +82,7 @@ export function ProductCard({ product }: { product: Product }) {
         )}
         <button
           aria-label="Favoritar"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(product.id); if (!isFav) track("favorite_add", { product_id: product.id }); }}
+          onClick={toggleFav}
           className={`absolute right-3 bottom-3 grid h-9 w-9 place-items-center rounded-full border bg-background/60 backdrop-blur transition ${isFav ? "border-neon-magenta text-neon-magenta glow-magenta" : "border-white/10 hover:border-neon-magenta/60 hover:text-neon-magenta"}`}
         >
           <Heart className={`h-4 w-4 ${isFav ? "fill-current" : ""}`} />
@@ -76,11 +92,15 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{product.category}</span>
-          <span aria-hidden>•</span>
-          <span className="inline-flex items-center gap-1 text-neon-yellow">
-            <Star className="h-3 w-3 fill-current" />
-            {product.rating}
-          </span>
+          {typeof product.rating === "number" && (
+            <>
+              <span aria-hidden>•</span>
+              <span className="inline-flex items-center gap-1 text-neon-yellow">
+                <Star className="h-3 w-3 fill-current" />
+                {product.rating}
+              </span>
+            </>
+          )}
         </div>
         <h3 className="font-display text-base font-bold leading-tight">
           <Link to="/v/$slug" params={{ slug: product.slug }} className="hover:text-neon-cyan">
@@ -112,7 +132,7 @@ export function ProductCard({ product }: { product: Product }) {
             </button>
             <button
               aria-label="QR Code"
-              onClick={() => setQrOpen(true)}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQrOpen(true); }}
               className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/5 transition hover:border-neon-cyan/60 hover:text-neon-cyan"
             >
               <QrCode className="h-4 w-4" />

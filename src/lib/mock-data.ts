@@ -8,13 +8,14 @@ export type Product = {
   slug: string;
   title: string;
   category: string;
-  categoryId: string;
+  categoryId?: string;
   description: string;
   price: number;
   oldPrice?: number;
   image: string;
   tag?: "novo" | "oferta" | "tendencia";
-  rating: number;
+  rating?: number;
+  whatsapp?: string;
 };
 
 export const products: Product[] = [
@@ -86,8 +87,16 @@ export const formatBRL = (n: number) =>
 
 export const WHATSAPP_NUMBER = "5511999999999";
 
-export function whatsappLink(product: Pick<Product, "title" | "price" | "slug">) {
+export function whatsappLink(product: Pick<Product, "title" | "price" | "slug" | "whatsapp">) {
   const url = typeof window !== "undefined" ? `${window.location.origin}/v/${product.slug}` : "";
   const msg = `Olá! Tenho interesse no *${product.title}* (${formatBRL(product.price)}). ${url}`;
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+  const number = (product.whatsapp ?? WHATSAPP_NUMBER).replace(/\D/g, "") || WHATSAPP_NUMBER;
+  return `https://wa.me/${number}?text=${encodeURIComponent(msg)}`;
 }
+
+// Placeholder used when a DB product has no image_url yet.
+export const PLACEHOLDER_IMAGE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'><defs><linearGradient id='g' x1='0' x2='1' y2='1'><stop offset='0' stop-color='%23050816'/><stop offset='1' stop-color='%238A2EFF'/></linearGradient></defs><rect width='400' height='400' fill='url(%23g)'/><text x='50%' y='50%' fill='%2300F5FF' font-family='sans-serif' font-size='22' text-anchor='middle' dominant-baseline='middle'>NeonFlow</text></svg>`,
+  );

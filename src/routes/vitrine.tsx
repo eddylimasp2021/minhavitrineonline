@@ -1,19 +1,41 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProductCard } from "@/components/product/ProductCard";
-import { products } from "@/lib/mock-data";
+import { PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
+import { listPublicProducts } from "@/lib/public.functions";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/vitrine")({
   head: () => ({
     meta: [
       { title: "Vitrine Virtual — NeonFlow Commerce" },
       { name: "description", content: "Showroom imersivo dos produtos NeonFlow." },
+      { property: "og:title", content: "Vitrine Virtual — NeonFlow Commerce" },
+      { property: "og:description", content: "Showroom imersivo dos produtos NeonFlow." },
+      { property: "og:type", content: "website" },
     ],
   }),
   component: VitrinePage,
 });
 
 function VitrinePage() {
+  const q = useQuery({
+    queryKey: ["vitrine-products"],
+    queryFn: () => listPublicProducts({ data: { limit: 24 } }),
+  });
+
+  const items: Product[] = (q.data ?? []).map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    description: r.description ?? "",
+    price: Number(r.price),
+    image: r.image_url ?? PLACEHOLDER_IMAGE,
+    category: r.category ?? "Geral",
+    whatsapp: r.whatsapp ?? undefined,
+  }));
+
   return (
     <AppShell>
       <section className="relative overflow-hidden rounded-3xl border border-white/10 glass p-8 sm:p-12 animate-fade-up">
@@ -31,11 +53,24 @@ function VitrinePage() {
         </div>
       </section>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
-        {products.map((p) => (
-          <ProductCard key={p.id} product={p} />
-        ))}
-      </div>
+      {q.isLoading ? (
+        <div className="mt-12 grid place-items-center text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="mt-10 rounded-3xl border border-dashed border-white/10 p-10 text-center text-muted-foreground">
+          Nenhum produto publicado ainda.{" "}
+          <Link to="/produtos" className="text-neon-cyan hover:underline">
+            Ver catálogo
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {items.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
+      )}
     </AppShell>
   );
 }
