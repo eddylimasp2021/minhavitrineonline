@@ -211,6 +211,7 @@ export type Database = {
         | "filter"
         | "load_more"
         | "scroll_depth"
+        | "favorite_remove"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -352,6 +353,7 @@ export const Constants = {
         "filter",
         "load_more",
         "scroll_depth",
+        "favorite_remove",
       ],
     },
   },
