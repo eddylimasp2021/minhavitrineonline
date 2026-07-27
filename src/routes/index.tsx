@@ -1,14 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Flame, Sparkles, TrendingUp, Zap } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, Flame, Sparkles, TrendingUp, Zap, Loader2 } from "lucide-react";
 import heroImg from "@/assets/hero-neon.jpg";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProductCard } from "@/components/product/ProductCard";
 import {
   categories,
-  dealOfTheDay,
   formatBRL,
-  products,
+  PLACEHOLDER_IMAGE,
+  type Product,
 } from "@/lib/mock-data";
+import { listPublicProducts } from "@/lib/public.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,35 +27,81 @@ export const Route = createFileRoute("/")({
         content:
           "Plataforma neon para vendas online com vitrine virtual, IA para descrições e integração WhatsApp.",
       },
+      { property: "og:type", content: "website" },
     ],
   }),
   component: Index,
 });
 
 function Index() {
+  const q = useQuery({
+    queryKey: ["home-products"],
+    queryFn: () => listPublicProducts({ data: { limit: 24 } }),
+  });
+
+  const items: Product[] = (q.data ?? []).map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    description: r.description ?? "",
+    price: Number(r.price),
+    image: r.image_url ?? PLACEHOLDER_IMAGE,
+    category: r.category ?? "Geral",
+    whatsapp: r.whatsapp ?? undefined,
+  }));
+
+  const deal = items[0];
+  const featured = items.slice(0, 4);
+  const trending = items.slice(4, 8);
+  const latest = items.slice(0, 4);
+
   return (
     <AppShell>
       <Hero />
       <Categories />
-      <DealOfTheDay />
-      <ProductSection
-        title="Em destaque"
-        subtitle="Selecionados pela curadoria"
-        icon={Sparkles}
-        accent="text-neon-cyan"
-      />
-      <ProductSection
-        title="Tendências"
-        subtitle="O que está bombando agora"
-        icon={TrendingUp}
-        accent="text-neon-magenta"
-      />
-      <ProductSection
-        title="Lançamentos"
-        subtitle="Recém-chegados na vitrine"
-        icon={Zap}
-        accent="text-neon-green"
-      />
+      {q.isLoading && (
+        <div className="mt-12 grid place-items-center text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      )}
+      {!q.isLoading && items.length === 0 && (
+        <div className="mt-12 rounded-3xl border border-dashed border-white/10 p-10 text-center">
+          <p className="text-muted-foreground">
+            Nenhum produto publicado ainda.{" "}
+            <Link to="/admin/produtos" className="text-neon-cyan hover:underline">
+              Criar o primeiro
+            </Link>
+          </p>
+        </div>
+      )}
+      {deal && <DealOfTheDay p={deal} />}
+      {featured.length > 0 && (
+        <ProductSection
+          title="Em destaque"
+          subtitle="Selecionados pela curadoria"
+          icon={Sparkles}
+          accent="text-neon-cyan"
+          items={featured}
+        />
+      )}
+      {trending.length > 0 && (
+        <ProductSection
+          title="Tendências"
+          subtitle="O que está bombando agora"
+          icon={TrendingUp}
+          accent="text-neon-magenta"
+          items={trending}
+        />
+      )}
+      {latest.length > 0 && (
+        <ProductSection
+          title="Lançamentos"
+          subtitle="Recém-chegados na vitrine"
+          icon={Zap}
+          accent="text-neon-green"
+          items={latest}
+        />
+      )}
     </AppShell>
   );
 }
@@ -127,33 +175,34 @@ function Categories() {
       />
       <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
         {categories.map((c) => (
-          <button
+          <Link
             key={c.id}
+            to="/produtos"
+            search={{ cat: c.label }}
             className="group flex min-w-[110px] shrink-0 flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur transition hover:border-neon-cyan/40 hover:bg-white/10"
           >
             <span className="text-2xl transition group-hover:scale-110">
               {c.icon}
             </span>
             <span className="text-xs font-medium">{c.label}</span>
-          </button>
+          </Link>
         ))}
       </div>
     </section>
   );
 }
 
-function DealOfTheDay() {
-  const p = dealOfTheDay;
+function DealOfTheDay({ p }: { p: Product }) {
   return (
     <section className="mt-10">
       <SectionHeader
         title="Oferta do dia"
-        subtitle="Acaba em 24h"
+        subtitle="Destaque da vitrine"
         icon={Flame}
         accent="text-neon-magenta"
       />
       <div className="mt-4 grid gap-4 overflow-hidden rounded-3xl border border-neon-magenta/30 bg-gradient-to-br from-neon-magenta/10 via-neon-purple/10 to-transparent p-4 backdrop-blur sm:grid-cols-[1fr_auto] sm:p-6">
-        <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+        <Link to="/v/$slug" params={{ slug: p.slug }} className="flex min-w-0 items-center gap-4 sm:gap-6">
           <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl sm:h-32 sm:w-32">
             <img
               src={p.image}
@@ -175,19 +224,16 @@ function DealOfTheDay() {
               {p.description}
             </p>
             <div className="mt-2 flex items-baseline gap-2">
-              {p.oldPrice && (
-                <span className="text-sm text-muted-foreground line-through">
-                  {formatBRL(p.oldPrice)}
-                </span>
-              )}
               <span className="font-display text-2xl font-black text-neon-cyan">
                 {formatBRL(p.price)}
               </span>
             </div>
           </div>
-        </div>
+        </Link>
         <div className="flex shrink-0 items-center sm:items-end">
-          <button className="btn-neon w-full sm:w-auto">Aproveitar</button>
+          <Link to="/v/$slug" params={{ slug: p.slug }} className="btn-neon w-full sm:w-auto">
+            Aproveitar
+          </Link>
         </div>
       </div>
     </section>
@@ -235,11 +281,13 @@ function ProductSection({
   subtitle,
   icon,
   accent,
+  items,
 }: {
   title: string;
   subtitle: string;
   icon: IconType;
   accent: string;
+  items: Product[];
 }) {
   return (
     <section className="mt-12">
@@ -250,7 +298,7 @@ function ProductSection({
         accent={accent}
       />
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {products.map((p) => (
+        {items.map((p) => (
           <ProductCard key={p.id + title} product={p} />
         ))}
       </div>
