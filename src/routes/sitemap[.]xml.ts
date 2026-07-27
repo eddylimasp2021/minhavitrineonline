@@ -1,27 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const BASE_URL = "";
-
-const paths = [
-  "/",
-  "/produtos",
-  "/vitrine",
-  "/promocoes",
-  "/favoritos",
-  "/perfil",
-];
+const BASE_URL = "https://minhavitrineonline.lovable.app";
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const urls = paths
-          .map(
-            (p) =>
-              `  <url>\n    <loc>${BASE_URL}${p}</loc>\n    <changefreq>weekly</changefreq>\n  </url>`,
-          )
-          .join("\n");
-        const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
+        const xml = [
+          `<?xml version="1.0" encoding="UTF-8"?>`,
+          `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+          `  <sitemap><loc>${BASE_URL}/sitemap-pages.xml</loc></sitemap>`,
+          `  <sitemap><loc>${BASE_URL}/sitemap-products.xml</loc></sitemap>`,
+          `</sitemapindex>`,
+        ].join("\n");
         return new Response(xml, {
           headers: {
             "Content-Type": "application/xml",
