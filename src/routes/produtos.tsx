@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
+import { useInfiniteQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProductCard } from "@/components/product/ProductCard";
 import { categories, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
 import { listPublicProducts } from "@/lib/public.functions";
 import { track } from "@/hooks/use-track";
+import { supabase } from "@/integrations/supabase/client";
 import { Search, X, Loader2, PackageSearch, AlertTriangle, RefreshCw } from "lucide-react";
 
 type ProdSearch = { q?: string; cat?: string };
@@ -53,6 +54,22 @@ function ProductSkeleton() {
 function ProdutosPage() {
   const { q, cat } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const qc = useQueryClient();
+
+  // Invalidate cached listings when products change in Supabase (realtime).
+  useEffect(() => {
+    const ch = supabase
+      .channel("public-products-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "products" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["public-products"] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
 
   // Local input state, debounced -> URL search param.
   const [inputValue, setInputValue] = useState(q ?? "");
