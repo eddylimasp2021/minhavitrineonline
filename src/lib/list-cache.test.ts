@@ -108,3 +108,124 @@ describe("favorites-queue collapse", () => {
     ]);
   });
 });
+
+/**
+ * Simulates the /produtos incremental pagination flow against the server cache.
+ * Guarantees: after Supabase changes trigger a full invalidation, every
+ * subsequent page fetch (including pages already viewed) misses the cache
+ * and re-reads from the source — no stale mixed with fresh in one session.
+ */
+describe("incremental pagination cache invalidation", () => {
+  type Row = { id: number; title: string };
+  type Page = { items: Row[]; nextOffset: number | null; total: number };
+
+  function makeSource(rows: Row[]) {
+    const calls: Array<{ offset: number; limit: number }> = [];
+    const fetchPage = (offset: number, limit: number): Page => {
+      calls.push({ offset, limit });
+      const slice = rows.slice(offset, offset + limit);
+      const next = offset + slice.length < rows.length ? offset + slice.length : null;
+      return { items: slice, nextOffset: next, total: rows.length };
+    };
+    return { calls, fetchPage };
+  }
+
+  async function loadPage(
+    cache: ListCache<Page>,
+    src: { fetchPage: (o: number, l: number) => Page },
+    q: string,
+    limit: number,
+    offset: number,
+  ) {
+    const key = makeKey({ q, limit, offset });
+    const hit = cache.get(key);
+    if (hit) return { page: hit, hit: true };
+    const page = src.fetchPage(offset, limit);
+    cache.set(key, page);
+    return { page, hit: false };
+  }
+
+  it("serves each incremental page from cache on re-visit until invalidated", async () => {
+    const cache = new ListCache<Page>(30_000);
+    const rows: Row[] = Array.from({ length: 30 }, (_, i) => ({ id: i, title: `p${i}` }));
+    const src = makeSource(rows);
+
+    const a = await loadPage(cache, src, "", 12, 0);
+    const b = await loadPage(cache, src, "", 12, 12);
+    expect(a.hit).toBe(false);
+    expect(b.hit).toBe(false);
+    expect(src.calls).toHaveLength(2);
+
+    // Re-visit both pages — both should hit cache, zero new source calls.
+    const a2 = await loadPage(cache, src, "", 12, 0);
+    const b2 = await loadPage(cache, src, "", 12, 12);
+    expect(a2.hit).toBe(true);
+    expect(b2.hit).toBe(true);
+    expect(src.calls).toHaveLength(2);
+    expect(a2.page.items[0].id).toBe(0);
+    expect(b2.page.items[0].id).toBe(12);
+  });
+
+  it("after realtime invalidation every page re-fetches fresh — no stale rows served", async () => {
+    const cache = new ListCache<Page>(30_000);
+    let rows: Row[] = Array.from({ length: 30 }, (_, i) => ({ id: i, title: `old-${i}` }));
+    const src = { calls: [] as Array<{ offset: number; limit: number }>, fetchPage: (o: number, l: number): Page => {
+      src.calls.push({ offset: o, limit: l });
+      const slice = rows.slice(o, o + l);
+      return { items: slice, nextOffset: o + slice.length < rows.length ? o + slice.length : null, total: rows.length };
+    } };
+
+    await loadPage(cache, src, "", 12, 0);
+    await loadPage(cache, src, "", 12, 12);
+    expect(src.calls).toHaveLength(2);
+
+    // Supabase change: a product's title flips. Realtime invalidates all list keys.
+    rows = rows.map((r) => ({ ...r, title: `new-${r.id}` }));
+    const removed = cache.invalidate((k) => k.startsWith("list:"));
+    expect(removed).toBe(2);
+
+    // Every subsequent page load must miss cache and reflect the new rows.
+    const a = await loadPage(cache, src, "", 12, 0);
+    const b = await loadPage(cache, src, "", 12, 12);
+    expect(a.hit).toBe(false);
+    expect(b.hit).toBe(false);
+    expect(a.page.items.every((r) => r.title.startsWith("new-"))).toBe(true);
+    expect(b.page.items.every((r) => r.title.startsWith("new-"))).toBe(true);
+    expect(src.calls).toHaveLength(4);
+  });
+
+  it("invalidating one query never leaks stale pages of a different query", async () => {
+    const cache = new ListCache<Page>(30_000);
+    const rowsShoe = Array.from({ length: 24 }, (_, i) => ({ id: i, title: `shoe-${i}` }));
+    const rowsBag = Array.from({ length: 24 }, (_, i) => ({ id: i + 100, title: `bag-${i}` }));
+    const srcShoe = makeSource(rowsShoe);
+    const srcBag = makeSource(rowsBag);
+
+    await loadPage(cache, srcShoe, "shoe", 12, 0);
+    await loadPage(cache, srcShoe, "shoe", 12, 12);
+    await loadPage(cache, srcBag, "bag", 12, 0);
+
+    // Scope invalidation to shoe listings only.
+    cache.invalidate((k) => k.startsWith("list:shoe|"));
+
+    const bagAgain = await loadPage(cache, srcBag, "bag", 12, 0);
+    expect(bagAgain.hit).toBe(true); // bag pages untouched
+    const shoeAgain = await loadPage(cache, srcShoe, "shoe", 12, 0);
+    expect(shoeAgain.hit).toBe(false); // shoe pages refetched
+  });
+
+  it("expired page during incremental scroll is refetched, not served stale", async () => {
+    let now = 1_000;
+    const cache = new ListCache<Page>(30_000, 200, 150, () => now);
+    const rows = Array.from({ length: 24 }, (_, i) => ({ id: i, title: `p${i}` }));
+    const src = makeSource(rows);
+
+    await loadPage(cache, src, "", 12, 0);
+    now += 40_000; // page 0 expires before user scrolls to page 1
+    const nextPage = await loadPage(cache, src, "", 12, 12);
+    const page0Again = await loadPage(cache, src, "", 12, 0);
+    expect(nextPage.hit).toBe(false);
+    expect(page0Again.hit).toBe(false); // must refetch after TTL, not serve stale
+    expect(src.calls).toHaveLength(3);
+  });
+});
