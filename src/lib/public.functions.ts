@@ -80,10 +80,28 @@ export const listPublicProducts = createServerFn({ method: "GET" })
       .parse(i ?? {}),
   )
   .handler(async ({ data }): Promise<PublicProductsPage> => {
-    const supa = serverClient();
     const limit = data.limit ?? 12;
     const offset = data.offset ?? 0;
     const term = data.q?.trim() ?? "";
+    const cat = data.category ?? "";
+
+    // In-memory server cache (per worker instance) keyed by query shape.
+    const cacheKey = `list:${term}|${cat}|${limit}|${offset}`;
+    const now = Date.now();
+    const cached = listCache.get(cacheKey);
+    if (cached && cached.expires > now) {
+      try {
+        setResponseHeader(
+          "Cache-Control",
+          "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
+        );
+      } catch { /* not in request scope */ }
+      return cached.value;
+    }
+
+    const supa = serverClient();
+
+    let result: PublicProductsPage;
 
     // Ranked search path: pull a wider window, score, sort, paginate in-memory.
     if (term) {
@@ -110,12 +128,12 @@ export const listPublicProducts = createServerFn({ method: "GET" })
         let s = 0;
         const title = r.title?.toLowerCase() ?? "";
         const desc = r.description?.toLowerCase() ?? "";
-        const cat = r.category?.toLowerCase() ?? "";
+        const cate = r.category?.toLowerCase() ?? "";
         const tags = (r.hashtags ?? []).join(" ").toLowerCase();
         if (title === t) s += 100;
         if (title.startsWith(t)) s += 40;
         if (title.includes(t)) s += 20;
-        if (cat.includes(t)) s += 8;
+        if (cate.includes(t)) s += 8;
         if (tags.includes(t)) s += 6;
         if (desc.includes(t)) s += 3;
         return { r, s };
@@ -124,24 +142,47 @@ export const listPublicProducts = createServerFn({ method: "GET" })
       const page = scored.slice(offset, offset + limit).map((x) => x.r);
       const total = count ?? scored.length;
       const nextOffset = offset + page.length < total ? offset + page.length : null;
-      return { items: page as PublicProductRow[], nextOffset, total };
+      result = { items: page as PublicProductRow[], nextOffset, total };
+    } else {
+      // No search: DB-side pagination via range().
+      let q = supa
+        .from("products")
+        .select(
+          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, created_at",
+          { count: "exact" },
+        )
+        .eq("published", true)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+      if (data.category) q = q.eq("category", data.category);
+
+      const { data: rows, error, count } = await q;
+      if (error) throw new Error(error.message);
+      const total = count ?? (rows?.length ?? 0);
+      const nextOffset = offset + (rows?.length ?? 0) < total ? offset + (rows?.length ?? 0) : null;
+      result = { items: (rows ?? []) as PublicProductRow[], nextOffset, total };
     }
 
-    // No search: DB-side pagination via range().
-    let q = supa
-      .from("products")
-      .select(
-        "id, slug, title, description, price, image_url, hashtags, whatsapp, category, created_at",
-        { count: "exact" },
-      )
-      .eq("published", true)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
-    if (data.category) q = q.eq("category", data.category);
+    // Store in cache with short TTL to keep pagination consistent.
+    listCache.set(cacheKey, { value: result, expires: now + LIST_TTL_MS });
+    if (listCache.size > 200) {
+      // Simple LRU-ish trim: drop oldest expired-first entries.
+      for (const [k, v] of listCache) {
+        if (v.expires <= now) listCache.delete(k);
+        if (listCache.size <= 150) break;
+      }
+    }
 
-    const { data: rows, error, count } = await q;
-    if (error) throw new Error(error.message);
-    const total = count ?? (rows?.length ?? 0);
-    const nextOffset = offset + (rows?.length ?? 0) < total ? offset + (rows?.length ?? 0) : null;
-    return { items: (rows ?? []) as PublicProductRow[], nextOffset, total };
+    try {
+      setResponseHeader(
+        "Cache-Control",
+        "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
+      );
+    } catch { /* not in request scope */ }
+
+    return result;
   });
+
+// Simple per-worker cache for public product listings.
+const LIST_TTL_MS = 30_000;
+const listCache = new Map<string, { value: PublicProductsPage; expires: number }>();
