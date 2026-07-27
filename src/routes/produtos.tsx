@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProductCard } from "@/components/product/ProductCard";
 import { categories, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
@@ -7,6 +7,7 @@ import { listPublicProducts } from "@/lib/public.functions";
 import { Search, X, Loader2 } from "lucide-react";
 
 type ProdSearch = { q?: string; cat?: string };
+const PAGE_SIZE = 12;
 
 export const Route = createFileRoute("/produtos")({
   validateSearch: (s: Record<string, unknown>): ProdSearch => ({
@@ -29,12 +30,19 @@ function ProdutosPage() {
   const { q, cat } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ["public-products", q ?? "", cat ?? ""],
-    queryFn: () => listPublicProducts({ data: { q, category: cat } }),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      listPublicProducts({
+        data: { q, category: cat, limit: PAGE_SIZE, offset: pageParam as number },
+      }),
+    getNextPageParam: (last) => last.nextOffset ?? undefined,
   });
 
-  const items: Product[] = (query.data ?? []).map((r) => ({
+  const rows = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const total = query.data?.pages[0]?.total ?? 0;
+  const items: Product[] = rows.map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,
@@ -109,11 +117,33 @@ function ProdutosPage() {
       ) : items.length === 0 ? (
         <p className="mt-16 text-center text-muted-foreground">Nenhum produto encontrado.</p>
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        <>
+          <div className="mt-6 text-xs text-muted-foreground">
+            Mostrando {items.length} de {total}
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {items.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+          {query.hasNextPage && (
+            <div className="mt-8 grid place-items-center">
+              <button
+                onClick={() => query.fetchNextPage()}
+                disabled={query.isFetchingNextPage}
+                className="btn-ghost-neon"
+              >
+                {query.isFetchingNextPage ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+                  </>
+                ) : (
+                  "Carregar mais"
+                )}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </AppShell>
   );

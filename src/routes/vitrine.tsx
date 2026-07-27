@@ -25,7 +25,7 @@ function VitrinePage() {
     queryFn: () => listPublicProducts({ data: { limit: 24 } }),
   });
 
-  const items: Product[] = (q.data ?? []).map((r) => ({
+  const items: Product[] = (q.data?.items ?? []).map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,
@@ -35,6 +35,7 @@ function VitrinePage() {
     category: r.category ?? "Geral",
     whatsapp: r.whatsapp ?? undefined,
   }));
+
 
   return (
     <AppShell>

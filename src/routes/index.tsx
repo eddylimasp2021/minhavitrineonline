@@ -39,7 +39,7 @@ function Index() {
     queryFn: () => listPublicProducts({ data: { limit: 24 } }),
   });
 
-  const items: Product[] = (q.data ?? []).map((r) => ({
+  const items: Product[] = (q.data?.items ?? []).map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,
@@ -49,6 +49,7 @@ function Index() {
     category: r.category ?? "Geral",
     whatsapp: r.whatsapp ?? undefined,
   }));
+
 
   const deal = items[0];
   const featured = items.slice(0, 4);

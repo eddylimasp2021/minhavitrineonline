@@ -4,12 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 import { track } from "./use-track";
 
+type FavRow = { product_id: string };
+
 export function useFavorites() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const key = ["favorites", user?.id] as const;
 
   const q = useQuery({
-    queryKey: ["favorites", user?.id],
+    queryKey: key,
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -26,14 +29,36 @@ export function useFavorites() {
   const mutation = useMutation({
     mutationFn: async (product_id: string) => {
       if (!user) throw new Error("not_authed");
-      if (ids.has(product_id)) {
-        await supabase.from("favorites").delete().eq("user_id", user.id).eq("product_id", product_id);
+      const isFav = ids.has(product_id);
+      if (isFav) {
+        const { error } = await supabase
+          .from("favorites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("product_id", product_id);
+        if (error) throw error;
       } else {
-        await supabase.from("favorites").insert({ user_id: user.id, product_id });
+        const { error } = await supabase
+          .from("favorites")
+          .insert({ user_id: user.id, product_id });
+        if (error) throw error;
         track("favorite_add", { product_id });
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["favorites", user?.id] }),
+    onMutate: async (product_id: string) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<FavRow[]>(key) ?? [];
+      const exists = prev.some((r) => r.product_id === product_id);
+      const next = exists
+        ? prev.filter((r) => r.product_id !== product_id)
+        : [{ product_id, products: null } as unknown as FavRow, ...prev];
+      qc.setQueryData(key, next);
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 
   const has = useCallback((id: string) => ids.has(id), [q.data]);

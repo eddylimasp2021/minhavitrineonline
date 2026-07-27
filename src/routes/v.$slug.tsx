@@ -12,12 +12,30 @@ export const Route = createFileRoute("/v/$slug")({
     if (!p) throw notFound();
     return { product: p };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
+    const SITE = "https://minhavitrineonline.lovable.app";
+    const DEFAULT_IMAGE = `${SITE}/og-default.jpg`;
     const p = loaderData?.product;
-    if (!p) return { meta: [{ title: "Produto — NeonFlow" }] };
+    if (!p) {
+      return {
+        meta: [
+          { title: "Produto — NeonFlow" },
+          { name: "description", content: "Descubra produtos exclusivos na vitrine NeonFlow." },
+          { property: "og:title", content: "Produto — NeonFlow" },
+          { property: "og:description", content: "Descubra produtos exclusivos na vitrine NeonFlow." },
+          { property: "og:type", content: "product" },
+          { property: "og:image", content: DEFAULT_IMAGE },
+          { name: "twitter:card", content: "summary_large_image" },
+          { name: "twitter:image", content: DEFAULT_IMAGE },
+        ],
+      };
+    }
     const title = `${p.title} — NeonFlow`;
-    const description = (p.description ?? `${p.title} por ${formatBRL(Number(p.price))}`).slice(0, 160);
-    const image = p.image_url ?? undefined;
+    const rawDesc = (p.description && p.description.trim())
+      || `${p.title} por ${formatBRL(Number(p.price))} — disponível na vitrine NeonFlow.`;
+    const description = rawDesc.slice(0, 160);
+    const img = p.image_url && /^https?:\/\//i.test(p.image_url) ? p.image_url : DEFAULT_IMAGE;
+    const url = `${SITE}/v/${params.slug}`;
     return {
       meta: [
         { title },
@@ -25,13 +43,17 @@ export const Route = createFileRoute("/v/$slug")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:type", content: "product" },
-        ...(image ? [{ property: "og:image", content: image }, { name: "twitter:image", content: image }] : []),
-        { name: "twitter:card", content: image ? "summary_large_image" : "summary" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: img },
+        { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
+        { name: "twitter:image", content: img },
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
+
   component: PublicProduct,
   notFoundComponent: () => (
     <AppShell>
