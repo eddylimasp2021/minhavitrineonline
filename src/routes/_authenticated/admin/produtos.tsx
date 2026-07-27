@@ -157,10 +157,38 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
   const [saveBusy, setSaveBusy] = useState(false);
 
   async function onFile(f: File) {
-    setFile(f);
-    const reader = new FileReader();
-    reader.onload = () => setImageDataUrl(reader.result as string);
-    reader.readAsDataURL(f);
+    // Normalize to JPEG (max 1600px) so Gemini accepts HEIC/webp/large photos.
+    try {
+      const origUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = () => reject(new Error("read fail"));
+        r.readAsDataURL(f);
+      });
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error("Formato de imagem não suportado pelo navegador (tente JPG/PNG)"));
+        i.src = origUrl;
+      });
+      const MAX = 1600;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas indisponível");
+      ctx.drawImage(img, 0, 0, w, h);
+      const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      const blob = await (await fetch(jpegDataUrl)).blob();
+      const jpegFile = new File([blob], f.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+      setFile(jpegFile);
+      setImageDataUrl(jpegDataUrl);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao ler imagem");
+    }
   }
 
   async function generate() {
