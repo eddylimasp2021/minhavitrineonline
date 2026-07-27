@@ -3,11 +3,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // Stub browser + supabase antes de importar o módulo.
 const inserts: unknown[] = [];
 vi.stubGlobal("window", { location: { pathname: "/x" } } as unknown as Window);
+const store = new Map<string, string>();
 vi.stubGlobal("localStorage", {
-  _s: new Map<string, string>(),
-  getItem(k: string) { return this._s.get(k) ?? null; },
-  setItem(k: string, v: string) { this._s.set(k, v); },
-  removeItem(k: string) { this._s.delete(k); },
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => { store.set(k, v); },
+  removeItem: (k: string) => { store.delete(k); },
 } as unknown as Storage);
 vi.stubGlobal("crypto", { randomUUID: () => "test-session" } as unknown as Crypto);
 
