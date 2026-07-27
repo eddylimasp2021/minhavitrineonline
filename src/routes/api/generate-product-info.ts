@@ -1,10 +1,19 @@
 /**
  * AI generator: takes a base64 product image (+ optional hint) and returns
  * SEO-friendly title, description and hashtags via Lovable AI (Gemini vision).
+ *
+ * Auth: requires a valid Supabase user session. The Authorization bearer token
+ * is validated via supabase.auth.getClaims() before any paid AI call is made,
+ * preventing unauthenticated cost-abuse of the LOVABLE_API_KEY.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 type Body = { imageDataUrl?: string; hint?: string };
+
+// Cap image payload at ~8MB base64 (~6MB binary) to prevent oversized uploads.
+const MAX_IMAGE_DATAURL_LEN = 8 * 1024 * 1024;
 
 export const Route = createFileRoute("/api/generate-product-info")({
   server: {
@@ -12,6 +21,39 @@ export const Route = createFileRoute("/api/generate-product-info")({
       POST: async ({ request }) => {
         const key = process.env.LOVABLE_API_KEY;
         if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+
+        // --- Auth gate: require a valid Supabase session ---
+        const authHeader = request.headers.get("authorization") ?? "";
+        if (!authHeader.startsWith("Bearer ")) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const token = authHeader.slice("Bearer ".length).trim();
+        if (!token || token.split(".").length !== 3) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const supaUrl = process.env.SUPABASE_URL;
+        const supaKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+        if (!supaUrl || !supaKey) {
+          return Response.json({ error: "Server misconfigured" }, { status: 500 });
+        }
+        const supa = createClient<Database>(supaUrl, supaKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: {
+            fetch: (input, init) => {
+              const h = new Headers(init?.headers);
+              if (supaKey.startsWith("sb_") && h.get("Authorization") === `Bearer ${supaKey}`) {
+                h.delete("Authorization");
+              }
+              h.set("apikey", supaKey);
+              return fetch(input, { ...init, headers: h });
+            },
+          },
+        });
+        const { data: claimsData, error: claimsError } = await supa.auth.getClaims(token);
+        if (claimsError || !claimsData?.claims?.sub) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         let body: Body;
         try {
           body = (await request.json()) as Body;
@@ -20,6 +62,12 @@ export const Route = createFileRoute("/api/generate-product-info")({
         }
         if (!body.imageDataUrl && !body.hint) {
           return new Response("provide imageDataUrl or hint", { status: 400 });
+        }
+        if (body.imageDataUrl && body.imageDataUrl.length > MAX_IMAGE_DATAURL_LEN) {
+          return Response.json({ error: "Imagem muito grande (máx 6MB)" }, { status: 413 });
+        }
+        if (body.hint && body.hint.length > 2000) {
+          return Response.json({ error: "Dica muito longa" }, { status: 413 });
         }
 
         const content: Array<Record<string, unknown>> = [
