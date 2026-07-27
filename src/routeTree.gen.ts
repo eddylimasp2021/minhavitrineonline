@@ -18,6 +18,8 @@ import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as PromocoesRouteImport } from './routes/promocoes'
+import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.]xml'
+import { Route as SitemapProductsDotxmlRouteImport } from './routes/sitemap-products[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as VitrineRouteImport } from './routes/vitrine'
 import { Route as ApiGenerateProductInfoRouteImport } from './routes/api/generate-product-info'
@@ -69,6 +71,16 @@ const PromocoesRoute = PromocoesRouteImport.update({
   path: '/promocoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapPagesDotxmlRoute = SitemapPagesDotxmlRouteImport.update({
+  id: '/sitemap-pages.xml',
+  path: '/sitemap-pages.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapProductsDotxmlRoute = SitemapProductsDotxmlRouteImport.update({
+  id: '/sitemap-products.xml',
+  path: '/sitemap-products.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -110,6 +122,8 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof PerfilRoute
   '/produtos': typeof ProdutosRoute
   '/promocoes': typeof PromocoesRoute
+  '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
+  '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
@@ -126,6 +140,8 @@ export interface FileRoutesByTo {
   '/perfil': typeof PerfilRoute
   '/produtos': typeof ProdutosRoute
   '/promocoes': typeof PromocoesRoute
+  '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
+  '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
@@ -144,6 +160,8 @@ export interface FileRoutesById {
   '/perfil': typeof PerfilRoute
   '/produtos': typeof ProdutosRoute
   '/promocoes': typeof PromocoesRoute
+  '/sitemap-pages.xml': typeof SitemapPagesDotxmlRoute
+  '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
@@ -162,6 +180,8 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/produtos'
     | '/promocoes'
+    | '/sitemap-pages.xml'
+    | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
     | '/api/generate-product-info'
@@ -178,6 +198,8 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/produtos'
     | '/promocoes'
+    | '/sitemap-pages.xml'
+    | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
     | '/api/generate-product-info'
@@ -195,6 +217,8 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/produtos'
     | '/promocoes'
+    | '/sitemap-pages.xml'
+    | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
     | '/api/generate-product-info'
@@ -213,6 +237,8 @@ export interface RootRouteChildren {
   PerfilRoute: typeof PerfilRoute
   ProdutosRoute: typeof ProdutosRoute
   PromocoesRoute: typeof PromocoesRoute
+  SitemapPagesDotxmlRoute: typeof SitemapPagesDotxmlRoute
+  SitemapProductsDotxmlRoute: typeof SitemapProductsDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VitrineRoute: typeof VitrineRoute
   ApiGenerateProductInfoRoute: typeof ApiGenerateProductInfoRoute
@@ -284,6 +310,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PromocoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap-pages.xml': {
+      id: '/sitemap-pages.xml'
+      path: '/sitemap-pages.xml'
+      fullPath: '/sitemap-pages.xml'
+      preLoaderRoute: typeof SitemapPagesDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap-products.xml': {
+      id: '/sitemap-products.xml'
+      path: '/sitemap-products.xml'
+      fullPath: '/sitemap-products.xml'
+      preLoaderRoute: typeof SitemapProductsDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -352,6 +392,8 @@ const rootRouteChildren: RootRouteChildren = {
   PerfilRoute: PerfilRoute,
   ProdutosRoute: ProdutosRoute,
   PromocoesRoute: PromocoesRoute,
+  SitemapPagesDotxmlRoute: SitemapPagesDotxmlRoute,
+  SitemapProductsDotxmlRoute: SitemapProductsDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VitrineRoute: VitrineRoute,
   ApiGenerateProductInfoRoute: ApiGenerateProductInfoRoute,
@@ -360,3 +402,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
