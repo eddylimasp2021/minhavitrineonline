@@ -3,6 +3,7 @@ import { setResponseHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { ListCache, makeKey } from "./list-cache";
 
 function serverClient() {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
@@ -18,6 +19,7 @@ function serverClient() {
     },
   });
 }
+
 
 /**
  * Public read: fetch a published product by slug for /v/:slug OG rendering.
