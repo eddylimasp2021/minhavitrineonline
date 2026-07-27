@@ -170,9 +170,15 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
     }
     setAiBusy(true);
     try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Faça login para usar a IA");
       const res = await fetch("/api/generate-product-info", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ imageDataUrl, hint }),
       });
       const j = await res.json();
