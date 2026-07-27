@@ -103,7 +103,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         <h3 className="font-display text-base font-bold leading-tight">
-          <Link to="/v/$slug" params={{ slug: product.slug }} className="hover:text-neon-cyan">
+          <Link to="/v/$slug" params={{ slug: product.slug }} preload="intent" className="hover:text-neon-cyan">
             {product.title}
           </Link>
         </h3>
