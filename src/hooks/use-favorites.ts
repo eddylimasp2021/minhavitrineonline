@@ -1,10 +1,39 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 import { track } from "./use-track";
+import { enqueue, peek, remove, type FavIntent } from "@/lib/favorites-queue";
 
 type FavRow = { product_id: string };
+
+function isNetworkError(err: unknown): boolean {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  const msg = (err as { message?: string })?.message?.toLowerCase() ?? "";
+  return (
+    msg.includes("failed to fetch") ||
+    msg.includes("networkerror") ||
+    msg.includes("network request failed") ||
+    msg.includes("load failed")
+  );
+}
+
+async function applyIntent(userId: string, intent: FavIntent): Promise<void> {
+  if (intent.op === "remove") {
+    const { error } = await supabase
+      .from("favorites")
+      .delete()
+      .eq("user_id", userId)
+      .eq("product_id", intent.product_id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("favorites")
+      .insert({ user_id: userId, product_id: intent.product_id });
+    // 23505 unique_violation = already exists; treat as success.
+    if (error && (error as { code?: string }).code !== "23505") throw error;
+  }
+}
 
 export function useFavorites() {
   const { user } = useAuth();
@@ -30,20 +59,24 @@ export function useFavorites() {
     mutationFn: async (product_id: string) => {
       if (!user) throw new Error("not_authed");
       const isFav = ids.has(product_id);
-      if (isFav) {
-        const { error } = await supabase
-          .from("favorites")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("product_id", product_id);
-        if (error) throw error;
-        track("favorite_remove", { product_id, metadata: { source: "remote" } });
-      } else {
-        const { error } = await supabase
-          .from("favorites")
-          .insert({ user_id: user.id, product_id });
-        if (error) throw error;
-        track("favorite_add", { product_id, metadata: { source: "remote" } });
+      const op = isFav ? "remove" : "add";
+      try {
+        await applyIntent(user.id, { product_id, op, ts: Date.now() });
+        track(op === "add" ? "favorite_add" : "favorite_remove", {
+          product_id,
+          metadata: { source: "remote" },
+        });
+      } catch (err) {
+        if (isNetworkError(err)) {
+          // Persist intent — will flush on 'online' / mount.
+          enqueue({ product_id, op });
+          track(op === "add" ? "favorite_add" : "favorite_remove", {
+            product_id,
+            metadata: { source: "queued" },
+          });
+          return; // treat as success for optimistic UI
+        }
+        throw err;
       }
     },
     onMutate: async (product_id: string) => {
@@ -61,6 +94,64 @@ export function useFavorites() {
     },
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
+
+  // Background sync of the offline queue.
+  const flushing = useRef(false);
+  const flush = useCallback(async () => {
+    if (!user || flushing.current) return;
+    const items = peek();
+    if (items.length === 0) return;
+    flushing.current = true;
+    const done: string[] = [];
+    try {
+      for (const it of items) {
+        try {
+          await applyIntent(user.id, it);
+          done.push(it.product_id);
+          track(it.op === "add" ? "favorite_add" : "favorite_remove", {
+            product_id: it.product_id,
+            metadata: { source: "sync" },
+          });
+        } catch (err) {
+          if (isNetworkError(err)) break; // stop, retry later
+          done.push(it.product_id); // permanent error — drop
+        }
+      }
+    } finally {
+      if (done.length) {
+        remove(done);
+        qc.invalidateQueries({ queryKey: key });
+      }
+      flushing.current = false;
+    }
+  }, [user, qc, key]);
+
+  useEffect(() => {
+    if (!user) return;
+    void flush();
+    // Background Sync API — best-effort trigger.
+    if (
+      typeof navigator !== "undefined" &&
+      "serviceWorker" in navigator &&
+      "SyncManager" in window
+    ) {
+      navigator.serviceWorker.ready
+        .then((reg) =>
+          (reg as ServiceWorkerRegistration & { sync?: { register: (t: string) => Promise<void> } })
+            .sync?.register("favorites-sync")
+            .catch(() => undefined),
+        )
+        .catch(() => undefined);
+    }
+    const onOnline = () => void flush();
+    const onFocus = () => void flush();
+    window.addEventListener("online", onOnline);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user, flush]);
 
   const has = useCallback((id: string) => ids.has(id), [q.data]);
   const toggle = useCallback((id: string) => mutation.mutate(id), [mutation]);

@@ -1,2 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /_serverFn/
+Disallow: /api/
+Disallow: /admin
+Disallow: /_authenticated/
+
+Sitemap: https://minhavitrineonline.lovable.app/sitemap.xml
