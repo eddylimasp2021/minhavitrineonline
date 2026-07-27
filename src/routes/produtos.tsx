@@ -5,11 +5,13 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ProductCard } from "@/components/product/ProductCard";
 import { categories, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
 import { listPublicProducts } from "@/lib/public.functions";
-import { Search, X, Loader2, PackageSearch } from "lucide-react";
+import { track } from "@/hooks/use-track";
+import { Search, X, Loader2, PackageSearch, AlertTriangle, RefreshCw } from "lucide-react";
 
 type ProdSearch = { q?: string; cat?: string };
 const PAGE_SIZE = 12;
 const DEBOUNCE_MS = 350;
+const SITE = "https://minhavitrineonline.lovable.app";
 
 export const Route = createFileRoute("/produtos")({
   validateSearch: (s: Record<string, unknown>): ProdSearch => ({
@@ -23,7 +25,9 @@ export const Route = createFileRoute("/produtos")({
       { property: "og:title", content: "Produtos — NeonFlow Commerce" },
       { property: "og:description", content: "Catálogo completo da vitrine NeonFlow." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE}/produtos` },
     ],
+    links: [{ rel: "canonical", href: `${SITE}/produtos` }],
   }),
   component: ProdutosPage,
 });
