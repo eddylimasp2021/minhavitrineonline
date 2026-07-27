@@ -169,7 +169,7 @@ function ProdutosPage() {
   const initialError = query.isError && rows.length === 0;
   const nextPageError = query.isError && rows.length > 0;
 
-  // JSON-LD ItemList for SEO.
+  // JSON-LD ItemList + BreadcrumbList for SEO.
   const itemListLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -182,6 +182,17 @@ function ProdutosPage() {
       name: p.title,
     })),
   };
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Início", item: `${SITE}/` },
+      { "@type": "ListItem", position: 2, name: "Produtos", item: `${SITE}/produtos` },
+      ...(cat
+        ? [{ "@type": "ListItem", position: 3, name: cat, item: `${SITE}/produtos?cat=${encodeURIComponent(cat)}` }]
+        : []),
+    ],
+  };
 
   return (
     <AppShell>
@@ -190,6 +201,12 @@ function ProdutosPage() {
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
       />
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+
       <header className="animate-fade-up">
         <h1 className="font-display text-3xl font-black sm:text-4xl">
           <span className="text-holo">Produtos</span>
