@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { track } from "./use-track";
 
 const KEY = "nf_local_favorites";
 
@@ -23,8 +24,10 @@ export function useLocalFavorites() {
 
   const toggle = useCallback((id: string) => {
     const next = new Set(read());
-    if (next.has(id)) next.delete(id); else next.add(id);
+    const wasFav = next.has(id);
+    if (wasFav) next.delete(id); else next.add(id);
     persist(next);
+    track(wasFav ? "favorite_remove" : "favorite_add", { product_id: id, metadata: { source: "local" } });
   }, []);
 
   const has = useCallback((id: string) => ids.has(id), [ids]);

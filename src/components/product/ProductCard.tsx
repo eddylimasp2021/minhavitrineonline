@@ -35,14 +35,10 @@ export function ProductCard({ product }: { product: Product }) {
   function toggleFav(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (remote.isAuthed) {
-      remote.toggle(product.id);
-      if (!isFav) track("favorite_add", { product_id: product.id });
-    } else {
-      local.toggle(product.id);
-      if (!isFav) track("favorite_add", { product_id: product.id });
-    }
+    if (remote.isAuthed) remote.toggle(product.id);
+    else local.toggle(product.id);
   }
+
 
   async function handleShare(e: React.MouseEvent) {
     e.preventDefault();
@@ -60,7 +56,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className="neon-card group flex flex-col overflow-hidden">
-      <Link to="/v/$slug" params={{ slug: product.slug }} preload="intent" className="relative block aspect-square overflow-hidden" onClick={() => track("product_click", { product_id: product.id })}>
+      <Link to="/v/$slug" params={{ slug: product.slug }} preload="intent" className="relative block aspect-square overflow-hidden" onClick={() => track("product_click", { product_id: product.id, metadata: { source: "image" } })}>
         <img
           src={image}
           alt={product.title}
@@ -103,7 +99,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         <h3 className="font-display text-base font-bold leading-tight">
-          <Link to="/v/$slug" params={{ slug: product.slug }} preload="intent" className="hover:text-neon-cyan">
+          <Link to="/v/$slug" params={{ slug: product.slug }} preload="intent" className="hover:text-neon-cyan" onClick={() => track("product_click", { product_id: product.id, metadata: { source: "title" } })}>
             {product.title}
           </Link>
         </h3>
