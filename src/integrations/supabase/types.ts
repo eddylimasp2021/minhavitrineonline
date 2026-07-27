@@ -55,6 +55,24 @@ export type Database = {
           },
         ]
       }
+      analytics_rate: {
+        Row: {
+          count: number
+          minute_bucket: string
+          session_id: string
+        }
+        Insert: {
+          count?: number
+          minute_bucket: string
+          session_id: string
+        }
+        Update: {
+          count?: number
+          minute_bucket?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
