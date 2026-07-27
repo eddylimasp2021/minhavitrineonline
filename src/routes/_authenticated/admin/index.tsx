@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Eye, MousePointerClick, Heart, MessageCircle, TrendingUp, Users, Sparkles } from "lucide-react";
+import { Eye, MousePointerClick, Heart, MessageCircle, TrendingUp, Users, Sparkles, Plus } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { getAdminStats } from "@/lib/admin.functions";
 
@@ -51,6 +51,12 @@ function AdminDash() {
           </span>
           <h1 className="mt-3 font-display text-3xl font-black sm:text-4xl">Dashboard</h1>
           <p className="mt-1 text-muted-foreground">Performance da vitrine em tempo real.</p>
+          <Link
+            to="/admin/produtos"
+            className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 font-semibold text-background hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" /> Cadastrar novo produto
+          </Link>
         </div>
         <div className="flex rounded-full border border-white/10 bg-white/5 p-1">
           {RANGES.map((r) => (
