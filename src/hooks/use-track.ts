@@ -21,7 +21,11 @@ export type EventType =
   | "whatsapp_click"
   | "share_click"
   | "checkout_start"
-  | "conversion";
+  | "conversion"
+  | "search"
+  | "filter"
+  | "load_more"
+  | "scroll_depth";
 
 export async function track(
   event_type: EventType,

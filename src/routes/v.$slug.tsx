@@ -36,6 +36,23 @@ export const Route = createFileRoute("/v/$slug")({
     const description = rawDesc.slice(0, 160);
     const img = p.image_url && /^https?:\/\//i.test(p.image_url) ? p.image_url : DEFAULT_IMAGE;
     const url = `${SITE}/v/${params.slug}`;
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: p.title,
+      description,
+      image: img,
+      url,
+      sku: p.id,
+      category: p.category ?? undefined,
+      offers: {
+        "@type": "Offer",
+        price: Number(p.price),
+        priceCurrency: "BRL",
+        availability: "https://schema.org/InStock",
+        url,
+      },
+    };
     return {
       meta: [
         { title },
@@ -51,6 +68,12 @@ export const Route = createFileRoute("/v/$slug")({
         { name: "twitter:image", content: img },
       ],
       links: [{ rel: "canonical", href: url }],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify(jsonLd),
+        },
+      ],
     };
   },
 

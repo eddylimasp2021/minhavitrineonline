@@ -207,6 +207,10 @@ export type Database = {
         | "share_click"
         | "checkout_start"
         | "conversion"
+        | "search"
+        | "filter"
+        | "load_more"
+        | "scroll_depth"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -344,6 +348,10 @@ export const Constants = {
         "share_click",
         "checkout_start",
         "conversion",
+        "search",
+        "filter",
+        "load_more",
+        "scroll_depth",
       ],
     },
   },

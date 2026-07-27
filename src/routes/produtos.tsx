@@ -5,11 +5,13 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ProductCard } from "@/components/product/ProductCard";
 import { categories, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
 import { listPublicProducts } from "@/lib/public.functions";
-import { Search, X, Loader2, PackageSearch } from "lucide-react";
+import { track } from "@/hooks/use-track";
+import { Search, X, Loader2, PackageSearch, AlertTriangle, RefreshCw } from "lucide-react";
 
 type ProdSearch = { q?: string; cat?: string };
 const PAGE_SIZE = 12;
 const DEBOUNCE_MS = 350;
+const SITE = "https://minhavitrineonline.lovable.app";
 
 export const Route = createFileRoute("/produtos")({
   validateSearch: (s: Record<string, unknown>): ProdSearch => ({
@@ -23,7 +25,9 @@ export const Route = createFileRoute("/produtos")({
       { property: "og:title", content: "Produtos — NeonFlow Commerce" },
       { property: "og:description", content: "Catálogo completo da vitrine NeonFlow." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: `${SITE}/produtos` },
     ],
+    links: [{ rel: "canonical", href: `${SITE}/produtos` }],
   }),
   component: ProdutosPage,
 });
@@ -66,6 +70,16 @@ function ProdutosPage() {
     return () => clearTimeout(t);
   }, [inputValue, q, navigate]);
 
+  // Track search terms (debounced via URL sync above).
+  useEffect(() => {
+    if (q && q.trim()) track("search", { metadata: { q, cat: cat ?? null } });
+  }, [q, cat]);
+
+  // Track filter (category) changes.
+  useEffect(() => {
+    if (cat) track("filter", { metadata: { cat, q: q ?? null } });
+  }, [cat, q]);
+
   const query = useInfiniteQuery({
     queryKey: ["public-products", q ?? "", cat ?? ""],
     initialPageParam: 0,
@@ -75,6 +89,7 @@ function ProdutosPage() {
       }),
     getNextPageParam: (last) => last.nextOffset ?? undefined,
     placeholderData: keepPreviousData,
+    retry: 2,
   });
 
   const rows = query.data?.pages.flatMap((p) => p.items) ?? [];
@@ -98,6 +113,9 @@ function ProdutosPage() {
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting && !query.isFetchingNextPage) {
+          track("load_more", {
+            metadata: { source: "scroll", loaded: rows.length, total, q: q ?? null, cat: cat ?? null },
+          });
           query.fetchNextPage();
         }
       },
@@ -105,13 +123,56 @@ function ProdutosPage() {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [query.hasNextPage, query.isFetchingNextPage, query.fetchNextPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.hasNextPage, query.isFetchingNextPage, query.fetchNextPage, rows.length, total, q, cat]);
+
+  // Scroll-depth analytics: fire once per bucket (25/50/75/100%) per query.
+  const depthFired = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    depthFired.current = new Set();
+  }, [q, cat]);
+  useEffect(() => {
+    function onScroll() {
+      const h = document.documentElement;
+      const scrolled = h.scrollTop + window.innerHeight;
+      const pct = Math.min(100, Math.round((scrolled / h.scrollHeight) * 100));
+      for (const bucket of [25, 50, 75, 100]) {
+        if (pct >= bucket && !depthFired.current.has(bucket)) {
+          depthFired.current.add(bucket);
+          track("scroll_depth", { metadata: { bucket, q: q ?? null, cat: cat ?? null } });
+        }
+      }
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [q, cat]);
 
   const isInitialLoading = query.isLoading || (query.isFetching && rows.length === 0);
   const showEndMessage = !query.hasNextPage && items.length > 0 && !query.isFetching;
+  const initialError = query.isError && rows.length === 0;
+  const nextPageError = query.isError && rows.length > 0;
+
+  // JSON-LD ItemList for SEO.
+  const itemListLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Produtos NeonFlow",
+    numberOfItems: items.length,
+    itemListElement: items.slice(0, 30).map((p, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${SITE}/v/${p.slug}`,
+      name: p.title,
+    })),
+  };
 
   return (
     <AppShell>
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
+      />
       <header className="animate-fade-up">
         <h1 className="font-display text-3xl font-black sm:text-4xl">
           <span className="text-holo">Produtos</span>
@@ -177,6 +238,22 @@ function ProdutosPage() {
             <ProductSkeleton key={i} />
           ))}
         </div>
+      ) : initialError ? (
+        <div className="mt-16 grid place-items-center gap-3 text-center">
+          <div className="grid h-16 w-16 place-items-center rounded-full border border-neon-magenta/40 bg-neon-magenta/10 text-neon-magenta">
+            <AlertTriangle className="h-7 w-7" />
+          </div>
+          <h2 className="font-display text-lg font-bold">Não foi possível carregar</h2>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Verifique sua conexão e tente novamente. Se o problema persistir, aguarde alguns instantes.
+          </p>
+          <button
+            onClick={() => query.refetch()}
+            className="mt-2 inline-flex items-center gap-2 rounded-full border border-neon-cyan/40 bg-neon-cyan/10 px-4 py-2 text-xs text-neon-cyan hover:border-neon-cyan/70"
+          >
+            <RefreshCw className="h-3 w-3" /> Tentar novamente
+          </button>
+        </div>
       ) : items.length === 0 ? (
         <div className="mt-16 grid place-items-center gap-3 text-center">
           <div className="grid h-16 w-16 place-items-center rounded-full border border-white/10 bg-white/5 text-neon-cyan">
@@ -210,10 +287,29 @@ function ProdutosPage() {
 
           <div ref={sentinelRef} aria-hidden className="h-1 w-full" />
 
-          {query.hasNextPage && !query.isFetchingNextPage && (
-            <div className="mt-8 grid place-items-center">
+          {nextPageError && (
+            <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-neon-magenta/30 bg-neon-magenta/5 p-4 text-center">
+              <div className="flex items-center gap-2 text-sm text-neon-magenta">
+                <AlertTriangle className="h-4 w-4" /> Falha ao carregar mais produtos
+              </div>
               <button
                 onClick={() => query.fetchNextPage()}
+                className="inline-flex items-center gap-2 rounded-full border border-neon-cyan/40 bg-neon-cyan/10 px-4 py-2 text-xs text-neon-cyan hover:border-neon-cyan/70"
+              >
+                <RefreshCw className="h-3 w-3" /> Tentar novamente
+              </button>
+            </div>
+          )}
+
+          {query.hasNextPage && !query.isFetchingNextPage && !nextPageError && (
+            <div className="mt-8 grid place-items-center">
+              <button
+                onClick={() => {
+                  track("load_more", {
+                    metadata: { source: "button", loaded: rows.length, total, q: q ?? null, cat: cat ?? null },
+                  });
+                  query.fetchNextPage();
+                }}
                 className="btn-ghost-neon"
               >
                 Carregar mais
