@@ -88,17 +88,17 @@ export const listPublicProducts = createServerFn({ method: "GET" })
     const cat = data.category ?? "";
 
     // In-memory server cache (per worker instance) keyed by query shape.
-    const cacheKey = `list:${term}|${cat}|${limit}|${offset}`;
+    const cacheKey = makeKey({ q: term, category: cat, limit, offset });
     const now = Date.now();
     const cached = listCache.get(cacheKey);
-    if (cached && cached.expires > now) {
+    if (cached) {
       try {
         setResponseHeader(
           "Cache-Control",
           "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
         );
       } catch { /* not in request scope */ }
-      return cached.value;
+      return cached;
     }
 
     const supa = serverClient();
@@ -165,15 +165,7 @@ export const listPublicProducts = createServerFn({ method: "GET" })
       result = { items: (rows ?? []) as PublicProductRow[], nextOffset, total };
     }
 
-    // Store in cache with short TTL to keep pagination consistent.
-    listCache.set(cacheKey, { value: result, expires: now + LIST_TTL_MS });
-    if (listCache.size > 200) {
-      // Simple LRU-ish trim: drop oldest expired-first entries.
-      for (const [k, v] of listCache) {
-        if (v.expires <= now) listCache.delete(k);
-        if (listCache.size <= 150) break;
-      }
-    }
+    listCache.set(cacheKey, result);
 
     try {
       setResponseHeader(
@@ -187,4 +179,26 @@ export const listPublicProducts = createServerFn({ method: "GET" })
 
 // Simple per-worker cache for public product listings.
 const LIST_TTL_MS = 30_000;
-const listCache = new Map<string, { value: PublicProductsPage; expires: number }>();
+const listCache = new ListCache<PublicProductsPage>(LIST_TTL_MS);
+
+/** Slugs for products sitemap. */
+export const listPublicProductSlugs = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ slug: string; updated_at: string }[]> => {
+    const supa = serverClient();
+    const { data, error } = await supa
+      .from("products")
+      .select("slug, updated_at")
+      .eq("published", true)
+      .order("updated_at", { ascending: false })
+      .limit(50_000);
+    if (error) throw new Error(error.message);
+    try {
+      setResponseHeader(
+        "Cache-Control",
+        "public, max-age=300, s-maxage=600, stale-while-revalidate=3600",
+      );
+    } catch { /* not in request scope */ }
+    return (data ?? []) as { slug: string; updated_at: string }[];
+  },
+);
+
