@@ -46,7 +46,7 @@ function ProdutosPage() {
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
-          navigate({ search: (prev) => ({ ...prev, q: (fd.get("q") as string) || undefined }) });
+          navigate({ search: (prev: ProdSearch) => ({ ...prev, q: (fd.get("q") as string) || undefined }) });
         }}
         className="relative mt-6"
       >
@@ -61,7 +61,7 @@ function ProdutosPage() {
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button
-          onClick={() => navigate({ search: (prev) => ({ ...prev, cat: undefined }) })}
+          onClick={() => navigate({ search: (prev: ProdSearch) => ({ ...prev, cat: undefined }) })}
           className={`rounded-full px-4 py-2 text-xs transition ${!cat ? "border border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan" : "border border-white/10 bg-white/5 hover:border-neon-cyan/40 hover:text-neon-cyan"}`}
         >
           Todos
@@ -71,7 +71,7 @@ function ProdutosPage() {
           return (
             <button
               key={c.id}
-              onClick={() => navigate({ search: (prev) => ({ ...prev, cat: active ? undefined : c.id }) })}
+              onClick={() => navigate({ search: (prev: ProdSearch) => ({ ...prev, cat: active ? undefined : c.id }) })}
               className={`rounded-full px-4 py-2 text-xs transition ${active ? "border border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan" : "border border-white/10 bg-white/5 hover:border-neon-cyan/40 hover:text-neon-cyan"}`}
             >
               {c.icon} {c.label}
