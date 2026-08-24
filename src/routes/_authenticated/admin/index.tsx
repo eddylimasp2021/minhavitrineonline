@@ -2,8 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Eye, MousePointerClick, Heart, MessageCircle, TrendingUp, Users, Sparkles, Plus } from "lucide-react";
+import { Eye, MousePointerClick, Heart, MessageCircle, TrendingUp, Users, Sparkles, Plus, CreditCard } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { BackButton } from "@/components/layout/BackButton";
+
 import { getAdminStats } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
