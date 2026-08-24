@@ -2,8 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Eye, MousePointerClick, Heart, MessageCircle, TrendingUp, Users, Sparkles, Plus } from "lucide-react";
+import { Eye, MousePointerClick, Heart, MessageCircle, TrendingUp, Users, Sparkles, Plus, CreditCard } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { BackButton } from "@/components/layout/BackButton";
+
 import { getAdminStats } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -46,18 +48,30 @@ function AdminDash() {
     <AppShell>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="animate-fade-up">
-          <span className="inline-flex items-center gap-2 rounded-full border border-neon-cyan/30 bg-neon-cyan/10 px-3 py-1 text-xs text-neon-cyan">
-            <span className="pulse-dot" /> Dados reais
-          </span>
+          <BackButton fallback="/" />
+          <div className="mt-3">
+            <span className="inline-flex items-center gap-2 rounded-full border border-neon-cyan/30 bg-neon-cyan/10 px-3 py-1 text-xs text-neon-cyan">
+              <span className="pulse-dot" /> Dados reais
+            </span>
+          </div>
           <h1 className="mt-3 font-display text-3xl font-black sm:text-4xl">Dashboard</h1>
           <p className="mt-1 text-muted-foreground">Performance da vitrine em tempo real.</p>
-          <Link
-            to="/admin/produtos"
-            className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 font-semibold text-background hover:opacity-90"
-          >
-            <Plus className="h-4 w-4" /> Cadastrar novo produto
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              to="/admin/produtos"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 font-semibold text-background hover:opacity-90"
+            >
+              <Plus className="h-4 w-4" /> Cadastrar novo produto
+            </Link>
+            <Link
+              to="/admin/pagamentos"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 font-semibold hover:border-neon-purple/50 hover:text-neon-purple"
+            >
+              <CreditCard className="h-4 w-4" /> APIs de pagamento
+            </Link>
+          </div>
         </div>
+
         <div className="flex rounded-full border border-white/10 bg-white/5 p-1">
           {RANGES.map((r) => (
             <button
