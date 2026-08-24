@@ -2,7 +2,7 @@ import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { Share2, MessageCircle, QrCode, ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { getPublicProductBySlug } from "@/lib/public.functions";
-import { formatBRL } from "@/lib/mock-data";
+import { formatBRL, buildWhatsAppUrl } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
 import { useEffect } from "react";
 
