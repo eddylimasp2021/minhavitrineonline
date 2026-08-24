@@ -62,11 +62,13 @@ function AdminProducts() {
     <AppShell>
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-black">Meus Produtos</h1>
+          <BackButton fallback="/admin" />
+          <h1 className="mt-3 font-display text-3xl font-black">Meus Produtos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Crie, edite e publique sua vitrine. IA gera título, descrição e hashtags a partir da foto.
           </p>
         </div>
+
         <button
           onClick={() => setOpen(true)}
           className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 font-semibold text-background hover:opacity-90"
