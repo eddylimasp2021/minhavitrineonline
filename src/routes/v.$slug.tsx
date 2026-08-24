@@ -103,10 +103,13 @@ function PublicProduct() {
     track("product_view", { product_id: p.id, path: `/v/${p.slug}` });
   }, [p.id, p.slug]);
 
-  const wa = p.whatsapp?.replace(/\D/g, "");
-  const waUrl = wa
-    ? `https://wa.me/${wa}?text=${encodeURIComponent(`Olá! Vi ${p.title} (${window?.location?.origin ?? ""}/v/${p.slug}) e quero saber mais.`)}`
+  const waUrl = p.whatsapp
+    ? buildWhatsAppUrl(
+        p.whatsapp,
+        `Olá! Vi ${p.title} (${typeof window !== "undefined" ? window.location.origin : ""}/v/${p.slug}) e quero saber mais.`,
+      )
     : null;
+
 
   async function share() {
     track("share_click", { product_id: p.id });
