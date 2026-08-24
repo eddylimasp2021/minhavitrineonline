@@ -87,12 +87,36 @@ export const formatBRL = (n: number) =>
 
 export const WHATSAPP_NUMBER = "5511999999999";
 
+/** Normaliza para o formato internacional (Brasil por padrão). */
+export function normalizeWhatsAppNumber(raw?: string | null) {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (!digits) return WHATSAPP_NUMBER;
+  if (digits.startsWith("55") && digits.length >= 12) return digits;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  return digits;
+}
+
+/**
+ * Monta o link do WhatsApp. Em desktop usamos web.whatsapp.com porque
+ * wa.me/api.whatsapp.com costuma ser bloqueado por redes corporativas
+ * (ERR_BLOCKED_BY_RESPONSE).
+ */
+export function buildWhatsAppUrl(rawNumber: string | null | undefined, message: string) {
+  const number = normalizeWhatsAppNumber(rawNumber);
+  const text = encodeURIComponent(message);
+  const isMobile =
+    typeof navigator !== "undefined" && /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  return isMobile
+    ? `https://wa.me/${number}?text=${text}`
+    : `https://web.whatsapp.com/send?phone=${number}&text=${text}`;
+}
+
 export function whatsappLink(product: Pick<Product, "title" | "price" | "slug" | "whatsapp">) {
   const url = typeof window !== "undefined" ? `${window.location.origin}/v/${product.slug}` : "";
   const msg = `Olá! Tenho interesse no *${product.title}* (${formatBRL(product.price)}). ${url}`;
-  const number = (product.whatsapp ?? WHATSAPP_NUMBER).replace(/\D/g, "") || WHATSAPP_NUMBER;
-  return `https://wa.me/${number}?text=${encodeURIComponent(msg)}`;
+  return buildWhatsAppUrl(product.whatsapp, msg);
 }
+
 
 // Placeholder used when a DB product has no image_url yet.
 export const PLACEHOLDER_IMAGE =
