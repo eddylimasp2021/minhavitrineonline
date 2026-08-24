@@ -1,9 +1,10 @@
 import { MessageCircle } from "lucide-react";
-import { WHATSAPP_NUMBER } from "@/lib/mock-data";
+import { WHATSAPP_NUMBER, buildWhatsAppUrl } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
 
 export function WhatsAppFab() {
-  const href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá, vim pela NeonFlow!")}`;
+  const href = buildWhatsAppUrl(WHATSAPP_NUMBER, "Olá, vim pela NeonFlow!");
+
   return (
     <a
       href={href}
