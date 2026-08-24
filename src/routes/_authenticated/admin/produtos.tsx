@@ -4,6 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Sparkles, Loader2, ExternalLink, Copy } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { BackButton } from "@/components/layout/BackButton";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { uniqueSlug } from "@/lib/slug";
