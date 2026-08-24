@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, User, LogOut, LayoutDashboard, Loader2, Package } from "lucide-react";
+import { Bell, Search, User, LogOut, LayoutDashboard, Loader2, Package, CreditCard } from "lucide-react";
 import { useAuth, signOut } from "@/hooks/use-auth";
 import { useState, useRef, useEffect } from "react";
 
