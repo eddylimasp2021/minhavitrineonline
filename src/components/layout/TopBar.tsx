@@ -94,6 +94,10 @@ export function TopBar() {
                     <Link to="/admin/produtos" onClick={() => setOpen(false)} className="flex items-center gap-2 p-3 text-sm text-neon-cyan hover:bg-white/5">
                       <Package className="h-4 w-4" /> Meus produtos
                     </Link>
+                    <Link to="/admin/pagamentos" onClick={() => setOpen(false)} className="flex items-center gap-2 p-3 text-sm text-neon-purple hover:bg-white/5">
+                      <CreditCard className="h-4 w-4" /> APIs de pagamento
+                    </Link>
+
                   </>
                 )}
                 <button onClick={() => { setOpen(false); signOut(); }} className="flex w-full items-center gap-2 p-3 text-sm text-neon-magenta hover:bg-white/5">
