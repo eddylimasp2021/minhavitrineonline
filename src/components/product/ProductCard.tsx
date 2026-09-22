@@ -1,7 +1,7 @@
-import { Heart, MessageCircle, QrCode, Share2, ShoppingBag, Star, X } from "lucide-react";
+import { ExternalLink, Heart, MessageCircle, QrCode, Share2, ShoppingBag, Star, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { formatBRL, whatsappLink, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
+import { formatBRL, whatsappLink, accessLink, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
 import { useLocalFavorites } from "@/hooks/use-local-favorites";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -30,6 +30,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   const productUrl = typeof window !== "undefined" ? `${window.location.origin}/v/${product.slug}` : `/v/${product.slug}`;
   const waUrl = whatsappLink(product);
+  const access = accessLink(product);
   const image = product.image || PLACEHOLDER_IMAGE;
 
   function toggleFav(e: React.MouseEvent) {
@@ -146,16 +147,41 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         </div>
 
-        <a
-          href={waUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => track("checkout_start", { product_id: product.id })}
-          className="btn-neon mt-1 w-full"
-        >
-          <ShoppingBag className="h-4 w-4" />
-          Comprar agora
-        </a>
+        {access ? (
+          <div className="mt-1 space-y-2">
+            <a
+              href={access.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("checkout_start", { product_id: product.id, metadata: { source: "external_link" } })}
+              className="btn-neon w-full"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {access.label}
+            </a>
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("whatsapp_click", { product_id: product.id })}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold transition hover:border-neon-green/60 hover:text-neon-green"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Falar no WhatsApp
+            </a>
+          </div>
+        ) : (
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => track("checkout_start", { product_id: product.id })}
+            className="btn-neon mt-1 w-full"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            Comprar agora
+          </a>
+        )}
       </div>
 
       {qrOpen && (
