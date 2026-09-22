@@ -13,6 +13,7 @@ import {
   Tag,
   Laptop,
   ShieldCheck,
+  FileText,
 } from "lucide-react";
 import { useAuth, signOut } from "@/hooks/use-auth";
 import { useState, useRef, useEffect } from "react";
@@ -216,6 +217,13 @@ export function TopBar() {
                         className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-medium hover:bg-white/5 transition-colors"
                       >
                         <CreditCard className="h-4 w-4 text-neon-green" /> Configurar Pagamentos
+                      </Link>
+                      <Link
+                        to="/admin/fiscal"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-medium hover:bg-white/5 transition-colors"
+                      >
+                        <FileText className="h-4 w-4 text-neon-yellow" /> Configuração Fiscal & Notas
                       </Link>
                     </div>
                   )}

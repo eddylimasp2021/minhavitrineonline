@@ -25,6 +25,7 @@ import { Route as VitrineRouteImport } from './routes/vitrine'
 import { Route as ApiGenerateProductInfoRouteImport } from './routes/api/generate-product-info'
 import { Route as VSlugRouteImport } from './routes/v.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminFiscalRouteImport } from './routes/_authenticated/admin/fiscal'
 import { Route as AuthenticatedAdminPagamentosRouteImport } from './routes/_authenticated/admin/pagamentos'
 import { Route as AuthenticatedAdminProdutosRouteImport } from './routes/_authenticated/admin/produtos'
 
@@ -107,6 +108,12 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminFiscalRoute =
+  AuthenticatedAdminFiscalRouteImport.update({
+    id: '/admin/fiscal',
+    path: '/admin/fiscal',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminPagamentosRoute =
   AuthenticatedAdminPagamentosRouteImport.update({
     id: '/admin/pagamentos',
@@ -135,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/vitrine': typeof VitrineRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
+  '/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
   '/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/admin/produtos': typeof AuthenticatedAdminProdutosRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -154,6 +162,7 @@ export interface FileRoutesByTo {
   '/vitrine': typeof VitrineRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
+  '/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
   '/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/admin/produtos': typeof AuthenticatedAdminProdutosRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -175,6 +184,7 @@ export interface FileRoutesById {
   '/vitrine': typeof VitrineRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
+  '/_authenticated/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
   '/_authenticated/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/_authenticated/admin/produtos': typeof AuthenticatedAdminProdutosRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/vitrine'
     | '/api/generate-product-info'
     | '/v/$slug'
+    | '/admin/fiscal'
     | '/admin/pagamentos'
     | '/admin/produtos'
     | '/admin/'
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/vitrine'
     | '/api/generate-product-info'
     | '/v/$slug'
+    | '/admin/fiscal'
     | '/admin/pagamentos'
     | '/admin/produtos'
     | '/admin'
@@ -235,6 +247,7 @@ export interface FileRouteTypes {
     | '/vitrine'
     | '/api/generate-product-info'
     | '/v/$slug'
+    | '/_authenticated/admin/fiscal'
     | '/_authenticated/admin/pagamentos'
     | '/_authenticated/admin/produtos'
     | '/_authenticated/admin/'
@@ -372,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/fiscal': {
+      id: '/_authenticated/admin/fiscal'
+      path: '/admin/fiscal'
+      fullPath: '/admin/fiscal'
+      preLoaderRoute: typeof AuthenticatedAdminFiscalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/pagamentos': {
       id: '/_authenticated/admin/pagamentos'
       path: '/admin/pagamentos'
@@ -390,12 +410,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminFiscalRoute: typeof AuthenticatedAdminFiscalRoute
   AuthenticatedAdminPagamentosRoute: typeof AuthenticatedAdminPagamentosRoute
   AuthenticatedAdminProdutosRoute: typeof AuthenticatedAdminProdutosRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminFiscalRoute: AuthenticatedAdminFiscalRoute,
   AuthenticatedAdminPagamentosRoute: AuthenticatedAdminPagamentosRoute,
   AuthenticatedAdminProdutosRoute: AuthenticatedAdminProdutosRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,

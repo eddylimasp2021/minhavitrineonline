@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Sparkles,
   Zap,
+  FileText,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuth, signOut } from "@/hooks/use-auth";
@@ -189,6 +190,24 @@ export function PerfilPage() {
             </div>
             <div className="mt-6 flex items-center gap-1 text-xs font-semibold text-neon-green">
               Configurar APIs <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/fiscal"
+            className="group rounded-3xl border border-neon-yellow/30 bg-neon-yellow/5 p-6 hover:border-neon-yellow/60 hover:bg-neon-yellow/10 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-neon-yellow/20 text-neon-yellow mb-4 group-hover:scale-110 transition-transform">
+                <FileText className="h-6 w-6" />
+              </div>
+              <h3 className="font-display text-lg font-bold text-foreground">Configuração Fiscal & Notas</h3>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                Emissão de NF-e, NFC-e (Cupom), NFS-e para Softwares, regras interestaduais (DIFAL/ICMS) e gateways fiscais.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center gap-1 text-xs font-semibold text-neon-yellow">
+              Acessar fiscal & notas <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>
         </section>
