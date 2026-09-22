@@ -21,6 +21,9 @@ import {
   Check,
   Download,
   Info,
+  Search,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { BackButton } from "@/components/layout/BackButton";
@@ -51,11 +54,31 @@ export const Route = createFileRoute("/_authenticated/admin/fiscal")({
 
 type TabKey = "empresa" | "modelos" | "estados" | "provedores" | "simulador";
 
+// Funções utilitárias de formatação
+const formatCnpj = (val: string) => {
+  const digits = val.replace(/\D/g, "").slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
+};
+
+const formatCep = (val: string) => {
+  const digits = val.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5, 8)}`;
+};
+
 function AdminFiscalPage() {
   const [settings, setSettings] = useState<FullFiscalSettings>(DEFAULT_FISCAL_SETTINGS);
   const [activeTab, setActiveTab] = useState<TabKey>("empresa");
   const [selectedRegion, setSelectedRegion] = useState<string>("todas");
   const [editingState, setEditingState] = useState<StateTaxRule | null>(null);
+
+  // Estados de Busca Automática
+  const [isSearchingCnpj, setIsSearchingCnpj] = useState(false);
+  const [isSearchingCep, setIsSearchingCep] = useState(false);
 
   // Estados do Simulador
   const [simValor, setSimValor] = useState<number>(199.90);
@@ -65,6 +88,158 @@ function AdminFiscalPage() {
   useEffect(() => {
     setSettings(loadFiscalSettings());
   }, []);
+
+  // Busca de CNPJ automática via Receita Federal (BrasilAPI + Fallback MinhaReceita)
+  const fetchCnpjData = async (rawCnpj: string) => {
+    const digits = rawCnpj.replace(/\D/g, "");
+    if (digits.length !== 14) {
+      toast.error("CNPJ incompleto", {
+        description: "Digite os 14 números do CNPJ para buscar os dados na Receita Federal.",
+      });
+      return;
+    }
+
+    setIsSearchingCnpj(true);
+    const toastId = toast.loading("Consultando dados na Receita Federal...", { id: "cnpj-search" });
+
+    try {
+      let data: any = null;
+
+      // Tentativa 1: BrasilAPI
+      try {
+        const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (err) {
+        console.warn("BrasilAPI falhou, tentando fallback MinhaReceita...", err);
+      }
+
+      // Tentativa 2: Minha Receita
+      if (!data) {
+        const resFallback = await fetch(`https://minhareceita.org/${digits}`);
+        if (resFallback.ok) {
+          data = await resFallback.json();
+        }
+      }
+
+      if (!data) {
+        throw new Error("Não foi possível consultar os dados na base da Receita.");
+      }
+
+      // Detecção inteligente do Regime Tributário (CRT)
+      let regime: "simples_nacional" | "mei" | "simples_excesso" | "lucro_presumido" | "lucro_real" = "simples_nacional";
+      let crt = "1";
+      if (data.opcao_pelo_mei === true || data.porte === "MEI") {
+        regime = "mei";
+        crt = "4";
+      } else if (data.opcao_pelo_simples === true) {
+        regime = "simples_nacional";
+        crt = "1";
+      } else {
+        regime = "lucro_presumido";
+        crt = "3";
+      }
+
+      const cnaeFormatted = data.cnae_fiscal
+        ? `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao || ""}`.trim()
+        : "";
+
+      const logradouroFormatted = data.descricao_tipo_de_logradouro
+        ? `${data.descricao_tipo_de_logradouro} ${data.logradouro || ""}`.trim()
+        : (data.logradouro || "");
+
+      const cepFormatted = data.cep ? formatCep(data.cep) : "";
+
+      setSettings((prev) => ({
+        ...prev,
+        company: {
+          ...prev.company,
+          cnpj: formatCnpj(digits),
+          razaoSocial: data.razao_social || prev.company.razaoSocial,
+          nomeFantasia: data.nome_fantasia || data.razao_social || prev.company.nomeFantasia,
+          cnaePrincipal: cnaeFormatted || prev.company.cnaePrincipal,
+          regimeTributario: regime,
+          crt: crt,
+          cep: cepFormatted || prev.company.cep,
+          logradouro: logradouroFormatted || prev.company.logradouro,
+          numero: data.numero || prev.company.numero,
+          complemento: data.complemento || prev.company.complemento,
+          bairro: data.bairro || prev.company.bairro,
+          cidade: data.municipio || prev.company.cidade,
+          uf: (data.uf || prev.company.uf).toUpperCase(),
+          codigoIbge: data.codigo_municipio_ibge ? String(data.codigo_municipio_ibge) : prev.company.codigoIbge,
+          emailFiscal: data.email || prev.company.emailFiscal,
+        },
+      }));
+
+      toast.success("Dados preenchidos automaticamente!", {
+        id: "cnpj-search",
+        description: `${data.razao_social || "Empresa"} localizada com sucesso.`,
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Não foi possível buscar os dados do CNPJ", {
+        id: "cnpj-search",
+        description: "Verifique o número digitado ou preencha as informações manualmente.",
+      });
+    } finally {
+      setIsSearchingCnpj(false);
+    }
+  };
+
+  // Busca de Endereço automática via CEP
+  const fetchCepData = async (rawCep: string) => {
+    const digits = rawCep.replace(/\D/g, "");
+    if (digits.length !== 8) return;
+
+    setIsSearchingCep(true);
+    try {
+      let data: any = null;
+      try {
+        const res = await fetch(`https://brasilapi.com.br/api/cep/v2/${digits}`);
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {}
+
+      if (!data) {
+        const res2 = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+        if (res2.ok) {
+          const viaData = await res2.json();
+          if (!viaData.erro) {
+            data = {
+              street: viaData.logradouro,
+              neighborhood: viaData.bairro,
+              city: viaData.localidade,
+              state: viaData.uf,
+              ibge: { city: viaData.ibge },
+            };
+          }
+        }
+      }
+
+      if (data) {
+        setSettings((prev) => ({
+          ...prev,
+          company: {
+            ...prev.company,
+            cep: formatCep(digits),
+            logradouro: data.street || prev.company.logradouro,
+            bairro: data.neighborhood || prev.company.bairro,
+            cidade: data.city || prev.company.cidade,
+            uf: (data.state || prev.company.uf).toUpperCase(),
+            codigoIbge: data.ibge?.city ? String(data.ibge.city) : prev.company.codigoIbge,
+          },
+        }));
+        toast.success("Endereço preenchido via CEP!", { duration: 2500 });
+      }
+    } catch (err) {
+      console.warn("Erro ao buscar CEP:", err);
+    } finally {
+      setIsSearchingCep(false);
+    }
+  };
 
   const handleSave = () => {
     saveFiscalSettings(settings);
@@ -194,6 +369,49 @@ function AdminFiscalPage() {
       {/* ABA 1: EMPRESA & EMITENTE */}
       {activeTab === "empresa" && (
         <section className="mt-6 space-y-6 animate-fade-up">
+          {/* Card de Destaque para Auto-Preenchimento via CNPJ */}
+          <div className="rounded-3xl border border-neon-purple/40 bg-gradient-to-r from-neon-purple/10 via-neon-cyan/5 to-transparent p-6 shadow-[0_0_25px_rgba(189,0,255,0.1)]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3.5">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-neon-purple/20 text-neon-purple shadow-[0_0_15px_rgba(189,0,255,0.3)]">
+                  <Sparkles className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-base font-bold text-foreground sm:text-lg">
+                      Preenchimento Automático via Receita Federal
+                    </h2>
+                    <span className="rounded-full bg-neon-green/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neon-green">
+                      Ativo
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground max-w-xl">
+                    Digite os 14 dígitos do seu CNPJ abaixo e clique em <strong>Buscar</strong> (ou pressione Enter) para preencher automaticamente Razão Social, Fantasia, CNAE, Regime CRT, Endereço e Código IBGE.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fetchCnpjData(settings.company.cnpj)}
+                  disabled={isSearchingCnpj}
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-neon-purple px-4 py-2.5 text-xs font-bold text-background shadow-[0_0_15px_rgba(189,0,255,0.4)] hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isSearchingCnpj ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Buscando na Receita...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4" /> Buscar CNPJ na Receita
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-white/10 glass p-6">
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-2xl bg-neon-purple/15 text-neon-purple">
@@ -209,19 +427,52 @@ function AdminFiscalPage() {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">CNPJ / CPF</label>
-                <input
-                  type="text"
-                  value={settings.company.cnpj}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      company: { ...settings.company, cnpj: e.target.value },
-                    })
-                  }
-                  className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground focus:border-neon-purple focus:outline-none"
-                  placeholder="00.000.000/0001-00"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-muted-foreground">CNPJ / CPF</label>
+                  {isSearchingCnpj && (
+                    <span className="flex items-center gap-1 text-[10px] text-neon-purple font-medium">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Consultando...
+                    </span>
+                  )}
+                </div>
+                <div className="relative mt-1.5 flex items-center">
+                  <input
+                    type="text"
+                    value={settings.company.cnpj}
+                    onChange={(e) => {
+                      const formatted = formatCnpj(e.target.value);
+                      setSettings({
+                        ...settings,
+                        company: { ...settings.company, cnpj: formatted },
+                      });
+                      const cleanDigits = e.target.value.replace(/\D/g, "");
+                      if (cleanDigits.length === 14) {
+                        fetchCnpjData(cleanDigits);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        fetchCnpjData(settings.company.cnpj);
+                      }
+                    }}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 pl-4 pr-10 py-2.5 text-sm text-foreground focus:border-neon-purple focus:outline-none"
+                    placeholder="00.000.000/0001-00"
+                  />
+                  <button
+                    type="button"
+                    title="Consultar CNPJ na Receita Federal"
+                    onClick={() => fetchCnpjData(settings.company.cnpj)}
+                    disabled={isSearchingCnpj}
+                    className="absolute right-2 text-muted-foreground hover:text-neon-purple transition-colors p-1"
+                  >
+                    {isSearchingCnpj ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-neon-purple" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -337,19 +588,52 @@ function AdminFiscalPage() {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">CEP</label>
-                <input
-                  type="text"
-                  value={settings.company.cep}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      company: { ...settings.company, cep: e.target.value },
-                    })
-                  }
-                  className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-foreground focus:border-neon-purple focus:outline-none"
-                  placeholder="00000-000"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-muted-foreground">CEP</label>
+                  {isSearchingCep && (
+                    <span className="flex items-center gap-1 text-[10px] text-neon-cyan font-medium">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Buscando...
+                    </span>
+                  )}
+                </div>
+                <div className="relative mt-1.5 flex items-center">
+                  <input
+                    type="text"
+                    value={settings.company.cep}
+                    onChange={(e) => {
+                      const formatted = formatCep(e.target.value);
+                      setSettings({
+                        ...settings,
+                        company: { ...settings.company, cep: formatted },
+                      });
+                      const cleanDigits = e.target.value.replace(/\D/g, "");
+                      if (cleanDigits.length === 8) {
+                        fetchCepData(cleanDigits);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        fetchCepData(settings.company.cep);
+                      }
+                    }}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 pl-4 pr-10 py-2.5 text-sm text-foreground focus:border-neon-purple focus:outline-none"
+                    placeholder="00000-000"
+                  />
+                  <button
+                    type="button"
+                    title="Consultar CEP"
+                    onClick={() => fetchCepData(settings.company.cep)}
+                    disabled={isSearchingCep}
+                    className="absolute right-2 text-muted-foreground hover:text-neon-cyan transition-colors p-1"
+                  >
+                    {isSearchingCep ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-neon-cyan" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="sm:col-span-2">
