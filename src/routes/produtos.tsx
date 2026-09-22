@@ -120,6 +120,9 @@ function ProdutosPage() {
     image: r.image_url ?? PLACEHOLDER_IMAGE,
     category: r.category ?? "Geral",
     whatsapp: r.whatsapp ?? undefined,
+    productType: r.product_type ?? undefined,
+    externalUrl: r.external_url ?? undefined,
+    ctaLabel: r.cta_label ?? undefined,
   }));
 
   // Infinite scroll sentinel.
