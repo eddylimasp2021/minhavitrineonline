@@ -1,8 +1,8 @@
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
-import { Share2, MessageCircle, QrCode, ArrowLeft } from "lucide-react";
+import { Share2, MessageCircle, QrCode, ArrowLeft, ExternalLink } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { getPublicProductBySlug } from "@/lib/public.functions";
-import { formatBRL, buildWhatsAppUrl } from "@/lib/mock-data";
+import { formatBRL, buildWhatsAppUrl, accessLink } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
 import { useEffect } from "react";
 
@@ -110,6 +110,12 @@ function PublicProduct() {
       )
     : null;
 
+  const access = accessLink({
+    productType: p.product_type ?? undefined,
+    externalUrl: p.external_url ?? undefined,
+    ctaLabel: p.cta_label ?? undefined,
+  });
+
 
   async function share() {
     track("share_click", { product_id: p.id });
@@ -159,15 +165,28 @@ function PublicProduct() {
           ) : null}
 
           <div className="mt-8 flex flex-wrap gap-3">
+            {access && (
+              <a
+                href={access.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => track("checkout_start", { product_id: p.id, metadata: { source: "external_link" } })}
+                className="inline-flex h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-purple px-5 font-semibold text-background hover:opacity-90"
+              >
+                <ExternalLink className="h-4 w-4" /> {access.label}
+              </a>
+            )}
             {waUrl && (
               <a
                 href={waUrl}
                 target="_blank"
                 rel="noopener"
                 onClick={() => track("whatsapp_click", { product_id: p.id })}
-                className="inline-flex h-12 items-center gap-2 rounded-xl bg-neon-green px-5 font-semibold text-background hover:opacity-90"
+                className={access
+                  ? "inline-flex h-12 items-center gap-2 rounded-xl border border-neon-green/40 bg-neon-green/10 px-5 font-semibold text-neon-green hover:bg-neon-green/20"
+                  : "inline-flex h-12 items-center gap-2 rounded-xl bg-neon-green px-5 font-semibold text-background hover:opacity-90"}
               >
-                <MessageCircle className="h-4 w-4" /> Comprar via WhatsApp
+                <MessageCircle className="h-4 w-4" /> {access ? "Falar no WhatsApp" : "Comprar via WhatsApp"}
               </a>
             )}
             <button
