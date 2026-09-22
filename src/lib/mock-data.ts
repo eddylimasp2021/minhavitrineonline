@@ -179,12 +179,15 @@ export const products: Product[] = [
 ];
 
 export const categories = [
-  { id: "calcados", label: "Calçados", icon: "👟", color: "neon-cyan" },
+  { id: "softwares", label: "Softwares", icon: "💻", color: "neon-cyan" },
+  { id: "ia-automacao", label: "IA & Automação", icon: "⚡", color: "neon-purple" },
+  { id: "sistemas", label: "Sistemas & SaaS", icon: "🌐", color: "neon-green" },
+  { id: "gamer", label: "Gamer", icon: "🎮", color: "neon-yellow" },
   { id: "audio", label: "Áudio", icon: "🎧", color: "neon-purple" },
   { id: "wearables", label: "Wearables", icon: "⌚", color: "neon-green" },
   { id: "acessorios", label: "Acessórios", icon: "🕶️", color: "neon-magenta" },
-  { id: "gamer", label: "Gamer", icon: "🎮", color: "neon-yellow" },
-  { id: "casa", label: "Casa", icon: "🏠", color: "neon-cyan" },
+  { id: "calcados", label: "Calçados", icon: "👟", color: "neon-cyan" },
+  { id: "casa", label: "Casa & Smart", icon: "🏠", color: "neon-cyan" },
 ];
 
 export const dealOfTheDay = products[0];

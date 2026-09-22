@@ -132,7 +132,18 @@ export const listPublicProducts = createServerFn({ method: "GET" })
           `title.ilike.${like},description.ilike.${like},category.ilike.${like}`,
         )
         .limit(200);
-      if (data.category) q = q.eq("category", data.category);
+      if (data.category) {
+        const catLower = data.category.toLowerCase();
+        if (catLower.includes("software")) {
+          q = q.or("category.ilike.%software%,product_type.eq.software");
+        } else if (catLower.includes("ia") || catLower.includes("automação") || catLower.includes("automacao")) {
+          q = q.or("category.ilike.%ia%,category.ilike.%inteligência%,category.ilike.%automação%,category.ilike.%automacao%");
+        } else if (catLower.includes("sistema") || catLower.includes("saas")) {
+          q = q.or("category.ilike.%sistema%,category.ilike.%saas%,category.ilike.%web%");
+        } else {
+          q = q.ilike("category", `%${data.category}%`);
+        }
+      }
 
       const { data: rows, error, count } = await q;
       if (error) throw new Error(error.message);
@@ -168,7 +179,18 @@ export const listPublicProducts = createServerFn({ method: "GET" })
         .eq("published", true)
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
-      if (data.category) q = q.eq("category", data.category);
+      if (data.category) {
+        const catLower = data.category.toLowerCase();
+        if (catLower.includes("software")) {
+          q = q.or("category.ilike.%software%,product_type.eq.software");
+        } else if (catLower.includes("ia") || catLower.includes("automação") || catLower.includes("automacao")) {
+          q = q.or("category.ilike.%ia%,category.ilike.%inteligência%,category.ilike.%automação%,category.ilike.%automacao%");
+        } else if (catLower.includes("sistema") || catLower.includes("saas")) {
+          q = q.or("category.ilike.%sistema%,category.ilike.%saas%,category.ilike.%web%");
+        } else {
+          q = q.ilike("category", `%${data.category}%`);
+        }
+      }
 
       const { data: rows, error, count } = await q;
       if (error) throw new Error(error.message);
