@@ -2,7 +2,23 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Sparkles, Loader2, ExternalLink, Copy, Download, Terminal, Laptop } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Sparkles,
+  Loader2,
+  ExternalLink,
+  Copy,
+  Download,
+  Terminal,
+  Laptop,
+  Pencil,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  X,
+  Check,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { BackButton } from "@/components/layout/BackButton";
 
@@ -53,6 +69,8 @@ function AdminProducts() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
 
   const q = useQuery({
     queryKey: ["admin-products", user?.id],
@@ -73,8 +91,30 @@ function AdminProducts() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Produto removido");
+      toast.success("Produto excluído com sucesso!");
+      setDeletingProduct(null);
       qc.invalidateQueries({ queryKey: ["admin-products", user?.id] });
+    },
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Erro ao excluir produto");
+    },
+  });
+
+  const toggleStatus = useMutation({
+    mutationFn: async ({ id, published }: { id: string; published: boolean }) => {
+      const { error } = await supabase
+        .from("products")
+        .update({ published: !published })
+        .eq("id", id);
+      if (error) throw error;
+      return !published;
+    },
+    onSuccess: (newStatus) => {
+      toast.success(newStatus ? "Produto publicado na vitrine!" : "Produto alterado para rascunho");
+      qc.invalidateQueries({ queryKey: ["admin-products", user?.id] });
+    },
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Erro ao alterar status");
     },
   });
 
@@ -85,13 +125,16 @@ function AdminProducts() {
           <BackButton fallback="/admin" />
           <h1 className="mt-3 font-display text-3xl font-black">Meus Produtos & Softwares</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Crie, edite e gerencie sua vitrine. Suporte completo para produtos físicos, softwares, licenças e apps.
+            Gerenciamento completo (Criar, Editar, Publicar e Excluir) da sua vitrine de produtos e softwares.
           </p>
         </div>
 
         <button
-          onClick={() => setOpen(true)}
-          className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 font-semibold text-background hover:opacity-90"
+          onClick={() => {
+            setEditingProduct(null);
+            setOpen(true);
+          }}
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 font-semibold text-background hover:opacity-90 transition-opacity"
         >
           <Plus className="h-4 w-4" /> Novo produto
         </button>
@@ -108,7 +151,7 @@ function AdminProducts() {
         {q.data?.map((p) => {
           const isDigital = isDigitalType(p.product_type);
           return (
-            <article key={p.id} className="rounded-3xl border border-white/10 glass overflow-hidden flex flex-col justify-between">
+            <article key={p.id} className="rounded-3xl border border-white/10 glass overflow-hidden flex flex-col justify-between group">
               <div>
                 {p.image_url ? (
                   <img src={p.image_url} alt={p.title} className="h-40 w-full object-cover" />
@@ -124,9 +167,18 @@ function AdminProducts() {
                       <p className="text-xs text-muted-foreground">{p.category ?? "Geral"}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${p.published ? "bg-neon-green/20 text-neon-green" : "bg-white/10 text-muted-foreground"}`}>
-                        {p.published ? "Publicado" : "Rascunho"}
-                      </span>
+                      <button
+                        onClick={() => toggleStatus.mutate({ id: p.id, published: p.published })}
+                        disabled={toggleStatus.isPending}
+                        title="Clique para alternar entre Publicado e Rascunho"
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all ${
+                          p.published
+                            ? "bg-neon-green/20 text-neon-green hover:bg-neon-green/30"
+                            : "bg-white/10 text-muted-foreground hover:bg-white/20"
+                        }`}
+                      >
+                        {p.published ? "✓ Publicado" : "• Rascunho"}
+                      </button>
                       {isDigital && (
                         <span className="rounded-md border border-neon-cyan/30 bg-neon-cyan/10 px-1.5 py-0.5 text-[10px] font-semibold text-neon-cyan">
                           {p.product_type === "software" ? "Software" : p.product_type === "app" ? "App" : "Digital"}
@@ -176,27 +228,40 @@ function AdminProducts() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 pt-2 border-t border-white/5">
+                  <button
+                    onClick={() => {
+                      setEditingProduct(p);
+                      setOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-neon-cyan/40 bg-neon-cyan/10 px-2.5 py-1 text-xs font-medium text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
+                    title="Editar informações do produto"
+                  >
+                    <Pencil className="h-3 w-3" /> Editar
+                  </button>
                   <Link
                     to="/v/$slug"
                     params={{ slug: p.slug }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-xs hover:border-neon-cyan/50"
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-xs hover:border-neon-cyan/50 text-muted-foreground hover:text-foreground"
+                    title="Ver página pública na vitrine"
                   >
-                    <ExternalLink className="h-3 w-3" /> Ver vitrine
+                    <ExternalLink className="h-3 w-3" /> Ver
                   </Link>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(`${window.location.origin}/v/${p.slug}`);
                       toast.success("Link copiado");
                     }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-xs hover:border-neon-cyan/50"
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-xs hover:border-neon-cyan/50 text-muted-foreground hover:text-foreground"
+                    title="Copiar link da vitrine"
                   >
                     <Copy className="h-3 w-3" /> Link
                   </button>
                   <button
-                    onClick={() => del.mutate(p.id)}
-                    className="ml-auto rounded-lg border border-white/10 p-1.5 text-neon-magenta hover:border-neon-magenta/50"
-                    aria-label="Remover"
+                    onClick={() => setDeletingProduct(p)}
+                    className="ml-auto rounded-lg border border-white/10 p-1.5 text-neon-magenta hover:border-neon-magenta/50 hover:bg-neon-magenta/10 transition-colors"
+                    title="Excluir produto"
+                    aria-label="Excluir produto"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -207,39 +272,102 @@ function AdminProducts() {
         })}
       </section>
 
+      {/* Modal de Criação / Edição (CRUD) */}
       {open && (
         <ProductForm
-          onClose={() => setOpen(false)}
-          onCreated={() => {
+          initialProduct={editingProduct}
+          onClose={() => {
+            setOpen(false);
+            setEditingProduct(null);
+          }}
+          onSaved={() => {
             qc.invalidateQueries({ queryKey: ["admin-products", user?.id] });
             setOpen(false);
+            setEditingProduct(null);
           }}
         />
+      )}
+
+      {/* Modal de Confirmação de Exclusão (CRUD - Delete) */}
+      {deletingProduct && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-background/80 p-4 backdrop-blur-lg"
+          onClick={() => setDeletingProduct(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl border border-neon-magenta/30 glass-strong p-6 text-center"
+          >
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-neon-magenta/10 text-neon-magenta">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h3 className="mt-4 font-display text-lg font-bold text-foreground">Excluir Produto?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Tem certeza que deseja remover <strong>"{deletingProduct.title}"</strong> da vitrine? Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setDeletingProduct(null)}
+                className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium hover:bg-white/5"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={del.isPending}
+                onClick={() => del.mutate(deletingProduct.id)}
+                className="inline-flex items-center gap-2 rounded-xl bg-neon-magenta px-5 py-2 text-sm font-semibold text-background hover:opacity-90 disabled:opacity-50"
+              >
+                {del.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </AppShell>
   );
 }
 
-function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function ProductForm({
+  initialProduct,
+  onClose,
+  onSaved,
+}: {
+  initialProduct?: ProductRow | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const { user } = useAuth();
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const isEditing = !!initialProduct;
+
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(initialProduct?.image_url ?? null);
   const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [hashtags, setHashtags] = useState("");
-  const [price, setPrice] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [productType, setProductType] = useState("software");
-  const [externalUrl, setExternalUrl] = useState("");
-  const [ctaLabel, setCtaLabel] = useState("");
-  const [softwareVersion, setSoftwareVersion] = useState("v1.0.0");
-  const [softwarePlatform, setSoftwarePlatform] = useState<string>(SOFTWARE_PLATFORMS[0]);
-  const [licenseType, setLicenseType] = useState("vitalicia");
-  const [demoUrl, setDemoUrl] = useState("");
-  const [downloadUrl, setDownloadUrl] = useState("");
-  const [deliveryInstructions, setDeliveryInstructions] = useState("");
-  const [systemRequirements, setSystemRequirements] = useState("");
+  const [title, setTitle] = useState(initialProduct?.title ?? "");
+  const [description, setDescription] = useState(initialProduct?.description ?? "");
+  const [category, setCategory] = useState(initialProduct?.category ?? (initialProduct?.product_type === "software" ? "Software" : ""));
+  const [hashtags, setHashtags] = useState(
+    initialProduct?.hashtags?.length
+      ? initialProduct.hashtags.map((t) => (t.startsWith("#") ? t : `#${t}`)).join(" ")
+      : ""
+  );
+  const [price, setPrice] = useState(initialProduct?.price !== undefined ? String(initialProduct.price) : "");
+  const [whatsapp, setWhatsapp] = useState(initialProduct?.whatsapp ?? "");
+  const [productType, setProductType] = useState(initialProduct?.product_type ?? "software");
+  const [externalUrl, setExternalUrl] = useState(initialProduct?.external_url ?? "");
+  const [ctaLabel, setCtaLabel] = useState(initialProduct?.cta_label ?? "");
+  const [softwareVersion, setSoftwareVersion] = useState(initialProduct?.software_version ?? "v1.0.0");
+  const [softwarePlatform, setSoftwarePlatform] = useState<string>(
+    initialProduct?.software_platform ?? SOFTWARE_PLATFORMS[0]
+  );
+  const [licenseType, setLicenseType] = useState(initialProduct?.license_type ?? "vitalicia");
+  const [demoUrl, setDemoUrl] = useState(initialProduct?.demo_url ?? "");
+  const [downloadUrl, setDownloadUrl] = useState(initialProduct?.download_url ?? "");
+  const [deliveryInstructions, setDeliveryInstructions] = useState(initialProduct?.delivery_instructions ?? "");
+  const [systemRequirements, setSystemRequirements] = useState(initialProduct?.system_requirements ?? "");
+  const [published, setPublished] = useState(initialProduct?.published ?? true);
   const [hint, setHint] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -301,7 +429,7 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
       if (!res.ok) throw new Error(j.error ?? "Falha IA");
       setTitle(j.title ?? "");
       setDescription(j.description ?? "");
-      setCategory(j.category ?? "Software");
+      setCategory(j.category ?? (isDigitalType(productType) ? "Software" : "Geral"));
       setHashtags((j.hashtags ?? []).join(" "));
       toast.success("Conteúdo gerado por IA");
     } catch (e) {
@@ -316,7 +444,7 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
     if (!user) return;
     setSaveBusy(true);
     try {
-      let image_url: string | null = null;
+      let image_url: string | null = initialProduct?.image_url ?? null;
       if (file) {
         const path = `${user.id}/${crypto.randomUUID()}-${file.name}`;
         const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
@@ -324,7 +452,8 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
         const { data: signed } = await supabase.storage.from("product-images").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
         image_url = signed?.signedUrl ?? null;
       }
-      const slug = uniqueSlug(title);
+
+      const slug = initialProduct?.slug || uniqueSlug(title);
       const tags = hashtags
         .split(/[\s,]+/)
         .map((t) => t.replace(/^#/, "").trim())
@@ -342,9 +471,7 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
         throw new Error("O link de demonstração deve começar com https://");
       }
 
-      const { error } = await supabase.from("products").insert({
-        owner_id: user.id,
-        slug,
+      const payload = {
         title,
         description,
         category: category || (isDigital ? "Software" : "Geral"),
@@ -362,11 +489,27 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
         download_url: isDigital && downloadUrl.trim() ? downloadUrl.trim() : null,
         delivery_instructions: isDigital && deliveryInstructions.trim() ? deliveryInstructions.trim() : null,
         system_requirements: isDigital && systemRequirements.trim() ? systemRequirements.trim() : null,
-        published: true,
-      });
-      if (error) throw error;
-      toast.success("Produto criado com sucesso!");
-      onCreated();
+        published,
+      };
+
+      if (isEditing && initialProduct) {
+        const { error } = await supabase
+          .from("products")
+          .update(payload)
+          .eq("id", initialProduct.id);
+        if (error) throw error;
+        toast.success("Produto atualizado com sucesso!");
+      } else {
+        const { error } = await supabase.from("products").insert({
+          ...payload,
+          owner_id: user.id,
+          slug,
+        });
+        if (error) throw error;
+        toast.success("Produto criado com sucesso!");
+      }
+
+      onSaved();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao salvar");
     } finally {
@@ -383,15 +526,35 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
         onClick={(e) => e.stopPropagation()}
         className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/10 glass-strong p-6"
       >
-        <h2 className="font-display text-xl font-bold">Novo Produto / Software</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Cadastre seu software, produto digital ou físico com dados completos de demonstração e entrega.
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h2 className="font-display text-xl font-bold">
+              {isEditing ? "Editar Produto / Software" : "Novo Produto / Software"}
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {isEditing
+                ? "Atualize as informações, preços, especificações de software ou links de download."
+                : "Cadastre seu software, produto digital ou físico com dados completos de demonstração e entrega."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-white/10 p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-[180px_1fr]">
-          <label className="flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-white/20 bg-white/5 hover:border-neon-cyan/50 transition-colors">
+          <label className="flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-white/20 bg-white/5 hover:border-neon-cyan/50 transition-colors relative group">
             {imageDataUrl ? (
-              <img src={imageDataUrl} className="h-full w-full object-cover" alt="preview" />
+              <>
+                <img src={imageDataUrl} className="h-full w-full object-cover" alt="preview" />
+                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-neon-cyan transition-opacity font-medium">
+                  Trocar imagem
+                </div>
+              </>
             ) : (
               <div className="text-center p-3 text-xs text-muted-foreground flex flex-col items-center gap-1">
                 <Laptop className="h-6 w-6 opacity-40 text-neon-cyan" />
@@ -416,7 +579,7 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
               className="inline-flex h-10 items-center gap-2 rounded-xl border border-neon-purple/40 bg-neon-purple/10 px-4 text-sm font-semibold text-neon-purple hover:bg-neon-purple/20 disabled:opacity-60"
             >
               {aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Gerar detalhes com IA
+              {isEditing ? "Reescrever com IA" : "Gerar detalhes com IA"}
             </button>
           </div>
         </div>
@@ -427,7 +590,7 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <input required type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Preço (R$)" className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none" />
           <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="WhatsApp Vendas (55119...)" className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none" />
           
-          <div className="sm:col-span-2">
+          <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de Produto</label>
             <select
               value={productType}
@@ -437,6 +600,18 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
               {PRODUCT_TYPES.map((t) => (
                 <option key={t.id} value={t.id} className="bg-background">{t.label}</option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Status de Publicação</label>
+            <select
+              value={published ? "true" : "false"}
+              onChange={(e) => setPublished(e.target.value === "true")}
+              className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none"
+            >
+              <option value="true" className="bg-background">Publicado na Vitrine</option>
+              <option value="false" className="bg-background">Rascunho (Oculto)</option>
             </select>
           </div>
         </div>
@@ -571,7 +746,7 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 py-2 text-sm font-semibold text-background hover:opacity-90 disabled:opacity-60"
           >
             {saveBusy && <Loader2 className="h-4 w-4 animate-spin" />}
-            Salvar produto
+            {isEditing ? "Salvar Alterações" : "Salvar Produto"}
           </button>
         </div>
       </form>
