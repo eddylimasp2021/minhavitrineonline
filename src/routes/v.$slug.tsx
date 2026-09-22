@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { getPublicProductBySlug } from "@/lib/public.functions";
-import { formatBRL, buildWhatsAppUrl, accessLink, isDigitalType, LICENSE_TYPES } from "@/lib/mock-data";
+import { formatBRL, buildWhatsAppUrl, accessLink, isDigitalType, LICENSE_TYPES, WHATSAPP_NUMBER } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
 import { useEffect } from "react";
 
@@ -89,6 +89,7 @@ export const Route = createFileRoute("/v/$slug")({
       </div>
     </AppShell>
   ),
+  component: PublicProduct,
 });
 
 function PublicProduct() {
@@ -103,7 +104,7 @@ function PublicProduct() {
     ? `Olá! Tenho interesse no software *${p.title}* ${p.software_version ? `(${p.software_version})` : ""}. Como faço para efetuar o pagamento e receber o link de acesso?`
     : `Olá! Vi *${p.title}* (${typeof window !== "undefined" ? window.location.origin : ""}/v/${p.slug}) e quero saber mais.`;
 
-  const waUrl = p.whatsapp ? buildWhatsAppUrl(p.whatsapp, waMsg) : null;
+  const waUrl = buildWhatsAppUrl(p.whatsapp || WHATSAPP_NUMBER, waMsg);
 
   const access = accessLink({
     productType: p.product_type ?? undefined,

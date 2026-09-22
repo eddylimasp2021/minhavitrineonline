@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { ListCache, makeKey } from "./list-cache";
+import { products } from "./mock-data";
 
 function serverClient() {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
@@ -27,26 +28,58 @@ function serverClient() {
 export const getPublicProductBySlug = createServerFn({ method: "GET" })
   .inputValidator((i: unknown) => z.object({ slug: z.string().min(1) }).parse(i))
   .handler(async ({ data }) => {
-    const supa = serverClient();
-    const { data: prod, error } = await supa
-      .from("products")
-      .select(
-        "id, slug, title, description, price, image_url, video_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements"
-      )
-      .eq("slug", data.slug)
-      .eq("published", true)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    // CDN/edge cache the OG payload: fresh for 5min, SWR for 1h. Missing -> short cache.
     try {
-      setResponseHeader(
-        "Cache-Control",
-        prod
-          ? "public, max-age=60, s-maxage=300, stale-while-revalidate=3600"
-          : "public, max-age=30, s-maxage=60",
-      );
-    } catch { /* not in request scope */ }
-    return prod;
+      const supa = serverClient();
+      const { data: prod, error } = await supa
+        .from("products")
+        .select(
+          "id, slug, title, description, price, image_url, video_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements"
+        )
+        .eq("slug", data.slug)
+        .eq("published", true)
+        .maybeSingle();
+      
+      if (!error && prod) {
+        try {
+          setResponseHeader(
+            "Cache-Control",
+            "public, max-age=60, s-maxage=300, stale-while-revalidate=3600",
+          );
+        } catch { /* not in request scope */ }
+        return prod;
+      }
+    } catch {
+      // Ignora erro de conexão supabase e tenta fallback
+    }
+
+    // Fallback para mock data
+    const mock = products.find((m) => m.slug === data.slug || m.id === data.slug);
+    if (mock) {
+      return {
+        id: mock.id,
+        slug: mock.slug,
+        title: mock.title,
+        description: mock.description ?? "",
+        price: Number(mock.price),
+        image_url: typeof mock.image === "string" ? mock.image : null,
+        video_url: null,
+        hashtags: [],
+        whatsapp: mock.whatsapp ?? null,
+        category: mock.category ?? null,
+        product_type: mock.productType ?? "physical",
+        external_url: mock.externalUrl ?? null,
+        cta_label: mock.ctaLabel ?? null,
+        software_version: mock.softwareVersion ?? null,
+        software_platform: mock.softwarePlatform ?? null,
+        license_type: mock.licenseType ?? null,
+        demo_url: mock.demoUrl ?? null,
+        download_url: mock.downloadUrl ?? null,
+        delivery_instructions: mock.deliveryInstructions ?? null,
+        system_requirements: mock.systemRequirements ?? null,
+      };
+    }
+
+    return null;
   });
 
 export type PublicProductRow = {

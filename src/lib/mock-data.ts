@@ -127,6 +127,27 @@ export function generateSoftwareDeliveryMessage(
 
 export const products: Product[] = [
   {
+    id: "apostlo-ai",
+    slug: "apostlo-ai",
+    title: "Apostlo AI: Inteligência Artificial Completa para Igrejas",
+    category: "Software",
+    categoryId: "softwares",
+    description: "Revolucione a gestão do seu ministério com a plataforma de inteligência artificial mais avançada do mercado. Conte com ERP completo, reconhecimento facial, assistente de voz e automação integrada para otimizar o dia a dia da sua comunidade.",
+    price: 150,
+    oldPrice: 300,
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80",
+    tag: "destaque",
+    rating: 5.0,
+    productType: "software",
+    softwareVersion: "v3.5.0 Pro",
+    softwarePlatform: "Windows / Web Cloud / Android",
+    licenseType: "vitalicia",
+    demoUrl: "https://apostlo.ai/demo",
+    downloadUrl: "https://minhavitrineonline.com.br/download/apostlo-ai-setup.exe",
+    systemRequirements: "Windows 10/11 ou Navegador Web, 4GB RAM, Conexão à Internet",
+    deliveryInstructions: "Após a confirmação, o link do instalador e a chave de ativação serão enviados imediatamente no seu WhatsApp e e-mail.",
+  },
+  {
     id: "neon-runner-x9",
     slug: "neon-runner-x9",
     title: "Neon Runner X9",
