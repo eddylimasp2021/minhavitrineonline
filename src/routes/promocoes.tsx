@@ -7,8 +7,8 @@ import { products } from "@/lib/mock-data";
 export const Route = createFileRoute("/promocoes")({
   head: () => ({
     meta: [
-      { title: "Promoções — NeonFlow Commerce" },
-      { name: "description", content: "Ofertas relâmpago e descontos exclusivos." },
+      { title: "Promoções — Minha Vitrine" },
+      { name: "description", content: "Ofertas relâmpago e descontos exclusivos na Minha Vitrine." },
     ],
   }),
   component: PromocoesPage,

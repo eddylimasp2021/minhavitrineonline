@@ -11,10 +11,10 @@ const searchSchema = z.object({ redirect: z.string().optional() });
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — NeonFlow Commerce" },
-      { name: "description", content: "Acesse sua conta NeonFlow para gerenciar vitrine, favoritos e produtos." },
-      { property: "og:title", content: "Entrar — NeonFlow Commerce" },
-      { property: "og:description", content: "Acesse sua conta NeonFlow." },
+      { title: "Entrar — Minha Vitrine" },
+      { name: "description", content: "Acesse sua conta para gerenciar vitrine, favoritos e produtos." },
+      { property: "og:title", content: "Entrar — Minha Vitrine" },
+      { property: "og:description", content: "Acesse sua conta Minha Vitrine." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
@@ -30,7 +30,7 @@ function AuthPage() {
   const [mode, setMode] = useState<"in" | "up">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -41,14 +41,12 @@ function AuthPage() {
 
   async function google() {
     setBusy(true);
-    const r = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/auth",
-    });
-    if (r.error) {
-      toast.error("Falha no login com Google");
+    try {
+      await signInWithOAuth("google");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao autenticar com Google");
+    } finally {
       setBusy(false);
-    } else if (!r.redirected) {
-      nav({ to: redirect ?? "/", replace: true });
     }
   }
 
@@ -56,25 +54,16 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "up") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin + "/auth",
-            data: { full_name: name },
-          },
-        });
-        if (error) throw error;
-        toast.success("Conta criada! Verifique seu e-mail se necessário.");
-        nav({ to: redirect ?? "/", replace: true });
+      if (mode === "in") {
+        await signInWithPassword(email, password);
+        toast.success("Login realizado com sucesso");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        nav({ to: redirect ?? "/", replace: true });
+        await signUp(email, password, fullName ? { full_name: fullName } : undefined);
+        toast.success("Conta criada com sucesso");
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro");
+      nav({ to: redirect || "/" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha na autenticação");
     } finally {
       setBusy(false);
     }
@@ -83,11 +72,11 @@ function AuthPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-background px-4 py-12">
       <div className="w-full max-w-md rounded-3xl border border-white/10 glass-strong p-8">
-        <Link to="/" className="mb-6 flex items-center gap-2">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-neon-cyan to-neon-magenta glow-cyan">
-            <Sparkles className="h-5 w-5 text-background" />
+        <Link to="/" className="mb-6 flex items-center gap-2.5 group">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-neon-cyan via-neon-purple to-neon-magenta shadow-[0_0_15px_rgba(0,245,255,0.4)]">
+            <span className="font-display text-lg font-black text-background">MV</span>
           </div>
-          <span className="font-display text-xl font-bold text-holo">NeonFlow</span>
+          <span className="font-display text-xl font-bold text-holo">Minha Vitrine</span>
         </Link>
 
         <h1 className="font-display text-2xl font-black">

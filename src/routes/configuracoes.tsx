@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const Route = createFileRoute("/configuracoes")({
-  head: () => ({ meta: [{ title: "Configurações — NeonFlow Commerce" }] }),
+  head: () => ({ meta: [{ title: "Configurações — Minha Vitrine" }] }),
   component: ConfiguracoesPage,
 });
 
@@ -38,7 +38,7 @@ function ConfiguracoesPage() {
     <AppShell>
       <header className="animate-fade-up">
         <h1 className="font-display text-3xl font-black sm:text-4xl">Configurações</h1>
-        <p className="mt-2 text-muted-foreground">Personalize a experiência NeonFlow.</p>
+        <p className="mt-2 text-muted-foreground">Personalize sua experiência na Minha Vitrine.</p>
       </header>
 
       <ul className="mt-8 divide-y divide-white/5 overflow-hidden rounded-3xl border border-white/10 glass">

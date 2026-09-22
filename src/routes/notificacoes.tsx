@@ -3,7 +3,7 @@ import { Bell } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const Route = createFileRoute("/notificacoes")({
-  head: () => ({ meta: [{ title: "Notificações — NeonFlow Commerce" }] }),
+  head: () => ({ meta: [{ title: "Notificações — Minha Vitrine" }] }),
   component: NotificacoesPage,
 });
 

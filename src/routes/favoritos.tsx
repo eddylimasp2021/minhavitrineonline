@@ -6,7 +6,7 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { formatBRL } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/favoritos")({
-  head: () => ({ meta: [{ title: "Favoritos — NeonFlow Commerce" }] }),
+  head: () => ({ meta: [{ title: "Favoritos — Minha Vitrine" }] }),
   component: FavoritosPage,
 });
 

@@ -3,7 +3,7 @@ import { WHATSAPP_NUMBER, buildWhatsAppUrl } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
 
 export function WhatsAppFab() {
-  const href = buildWhatsAppUrl(WHATSAPP_NUMBER, "Olá, vim pela NeonFlow!");
+  const href = buildWhatsAppUrl(WHATSAPP_NUMBER, "Olá! Vim pela Minha Vitrine Online.");
 
   return (
     <a
