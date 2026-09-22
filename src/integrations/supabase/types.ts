@@ -107,16 +107,23 @@ export type Database = {
           category: string | null
           created_at: string
           cta_label: string | null
+          delivery_instructions: string | null
+          demo_url: string | null
           description: string | null
+          download_url: string | null
           external_url: string | null
           hashtags: string[]
           id: string
           image_url: string | null
+          license_type: string | null
           owner_id: string
           price: number
           product_type: string
           published: boolean
           slug: string
+          software_platform: string | null
+          software_version: string | null
+          system_requirements: string | null
           title: string
           updated_at: string
           video_url: string | null
@@ -126,16 +133,23 @@ export type Database = {
           category?: string | null
           created_at?: string
           cta_label?: string | null
+          delivery_instructions?: string | null
+          demo_url?: string | null
           description?: string | null
+          download_url?: string | null
           external_url?: string | null
           hashtags?: string[]
           id?: string
           image_url?: string | null
+          license_type?: string | null
           owner_id: string
           price?: number
           product_type?: string
           published?: boolean
           slug: string
+          software_platform?: string | null
+          software_version?: string | null
+          system_requirements?: string | null
           title: string
           updated_at?: string
           video_url?: string | null
@@ -145,16 +159,23 @@ export type Database = {
           category?: string | null
           created_at?: string
           cta_label?: string | null
+          delivery_instructions?: string | null
+          demo_url?: string | null
           description?: string | null
+          download_url?: string | null
           external_url?: string | null
           hashtags?: string[]
           id?: string
           image_url?: string | null
+          license_type?: string | null
           owner_id?: string
           price?: number
           product_type?: string
           published?: boolean
           slug?: string
+          software_platform?: string | null
+          software_version?: string | null
+          system_requirements?: string | null
           title?: string
           updated_at?: string
           video_url?: string | null
