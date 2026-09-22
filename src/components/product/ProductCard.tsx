@@ -87,16 +87,25 @@ export function ProductCard({ product }: { product: Product }) {
       </Link>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{product.category}</span>
-          {typeof product.rating === "number" && (
-            <>
-              <span aria-hidden>•</span>
-              <span className="inline-flex items-center gap-1 text-neon-yellow">
-                <Star className="h-3 w-3 fill-current" />
-                {product.rating}
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate">{product.category}</span>
+            {product.softwarePlatform && (
+              <span className="shrink-0 rounded bg-neon-purple/15 px-1.5 py-0.5 text-[10px] font-medium text-neon-purple">
+                {product.softwarePlatform.split(" ")[0]}
               </span>
-            </>
+            )}
+          </div>
+          {product.softwareVersion && (
+            <span className="shrink-0 font-mono text-[10px] text-neon-cyan">
+              {product.softwareVersion}
+            </span>
+          )}
+          {typeof product.rating === "number" && !product.softwareVersion && (
+            <span className="inline-flex items-center gap-1 text-neon-yellow">
+              <Star className="h-3 w-3 fill-current" />
+              {product.rating}
+            </span>
           )}
         </div>
         <h3 className="font-display text-base font-bold leading-tight">

@@ -22,13 +22,45 @@ export type Product = {
   externalUrl?: string;
   /** Texto customizado do botão (ex.: "Baixar app"). */
   ctaLabel?: string;
+  /** Versão do software (ex.: v2.5.0) */
+  softwareVersion?: string;
+  /** Plataforma compatível (ex.: Windows 10/11, Web SaaS, Android) */
+  softwarePlatform?: string;
+  /** Tipo de licença (ex.: vitalicia, mensal, anual, demo) */
+  licenseType?: string;
+  /** Link de demonstração ou teste grátis */
+  demoUrl?: string;
+  /** Link direto de download / entrega do instalador */
+  downloadUrl?: string;
+  /** Instruções de instalação / ativação */
+  deliveryInstructions?: string;
+  /** Requisitos de sistema (ex.: 4GB RAM, Windows 64 bits) */
+  systemRequirements?: string;
 };
 
 export const PRODUCT_TYPES = [
   { id: "fisico", label: "Produto físico" },
   { id: "digital", label: "Produto digital" },
-  { id: "software", label: "Software" },
-  { id: "app", label: "Aplicativo" },
+  { id: "software", label: "Software / SaaS" },
+  { id: "app", label: "Aplicativo (App)" },
+] as const;
+
+export const SOFTWARE_PLATFORMS = [
+  "Windows (10/11)",
+  "Web / SaaS (Nuvem)",
+  "Android (APK / Play Store)",
+  "iOS (App Store)",
+  "macOS",
+  "Linux",
+  "Multiplataforma",
+] as const;
+
+export const LICENSE_TYPES = [
+  { id: "vitalicia", label: "Licença Vitalícia (Pagamento Único)" },
+  { id: "mensal", label: "Assinatura Mensal" },
+  { id: "anual", label: "Assinatura Anual" },
+  { id: "demo", label: "Demonstração / Teste Grátis" },
+  { id: "open_source", label: "Código Aberto / Open Source" },
 ] as const;
 
 export const isDigitalType = (t?: string | null) =>
@@ -37,7 +69,7 @@ export const isDigitalType = (t?: string | null) =>
 /** Rótulo padrão do botão de acesso conforme o tipo. */
 export function defaultCtaLabel(type?: string | null) {
   if (type === "app") return "Baixar o app";
-  if (type === "software") return "Acessar o software";
+  if (type === "software") return "Adquirir Licença";
   if (type === "digital") return "Acessar agora";
   return "Abrir link";
 }
@@ -47,6 +79,50 @@ export function accessLink(p: Pick<Product, "productType" | "externalUrl" | "cta
   const url = (p.externalUrl ?? "").trim();
   if (!url || !/^https?:\/\//i.test(url)) return null;
   return { href: url, label: (p.ctaLabel ?? "").trim() || defaultCtaLabel(p.productType) };
+}
+
+/**
+ * Gera mensagem estruturada e profissional de entrega de software
+ * para envio via WhatsApp ou E-mail após a compra.
+ */
+export function generateSoftwareDeliveryMessage(
+  p: {
+    title: string;
+    slug?: string;
+    softwareVersion?: string | null;
+    softwarePlatform?: string | null;
+    licenseType?: string | null;
+    downloadUrl?: string | null;
+    demoUrl?: string | null;
+    externalUrl?: string | null;
+    deliveryInstructions?: string | null;
+    systemRequirements?: string | null;
+    whatsapp?: string | null;
+  },
+  clientName?: string
+) {
+  const downloadLink = p.downloadUrl?.trim() || p.externalUrl?.trim() || "Link enviado em anexo";
+  const licenseLabel =
+    LICENSE_TYPES.find((l) => l.id === p.licenseType)?.label ?? p.licenseType ?? "Vitalícia";
+  
+  const greeting = clientName ? `Olá, *${clientName}*!` : "Olá!";
+  
+  return [
+    `🎉 ${greeting} Obrigado por adquirir o *${p.title}*!`,
+    ``,
+    `🚀 *DADOS DE ACESSO E DOWNLOAD:*`,
+    `📥 *Link de Download / Acesso:* ${downloadLink}`,
+    p.softwareVersion ? `🏷️ *Versão:* ${p.softwareVersion}` : null,
+    p.softwarePlatform ? `💻 *Compatibilidade:* ${p.softwarePlatform}` : null,
+    `🔑 *Tipo de Licença:* ${licenseLabel}`,
+    p.systemRequirements ? `⚙️ *Requisitos:* ${p.systemRequirements}` : null,
+    ``,
+    p.deliveryInstructions ? `📖 *Instruções de Instalação:* \n${p.deliveryInstructions}\n` : null,
+    `💬 Precisa de suporte? Estamos à disposição!`,
+    `Eddy Lima Informática — Suporte Técnico`,
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
 }
 
 export const products: Product[] = [

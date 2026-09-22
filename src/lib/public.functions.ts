@@ -30,7 +30,9 @@ export const getPublicProductBySlug = createServerFn({ method: "GET" })
     const supa = serverClient();
     const { data: prod, error } = await supa
       .from("products")
-      .select("id, slug, title, description, price, image_url, video_url, hashtags, whatsapp, category, product_type, external_url, cta_label")
+      .select(
+        "id, slug, title, description, price, image_url, video_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements"
+      )
       .eq("slug", data.slug)
       .eq("published", true)
       .maybeSingle();
@@ -60,6 +62,13 @@ export type PublicProductRow = {
   product_type: string | null;
   external_url: string | null;
   cta_label: string | null;
+  software_version?: string | null;
+  software_platform?: string | null;
+  license_type?: string | null;
+  demo_url?: string | null;
+  download_url?: string | null;
+  delivery_instructions?: string | null;
+  system_requirements?: string | null;
   created_at: string;
 };
 
@@ -115,7 +124,7 @@ export const listPublicProducts = createServerFn({ method: "GET" })
       let q = supa
         .from("products")
         .select(
-          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, created_at",
+          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements, created_at",
           { count: "exact" },
         )
         .eq("published", true)
@@ -153,7 +162,7 @@ export const listPublicProducts = createServerFn({ method: "GET" })
       let q = supa
         .from("products")
         .select(
-          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, created_at",
+          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements, created_at",
           { count: "exact" },
         )
         .eq("published", true)

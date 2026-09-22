@@ -37,6 +37,13 @@ function VitrinePage() {
     productType: r.product_type ?? undefined,
     externalUrl: r.external_url ?? undefined,
     ctaLabel: r.cta_label ?? undefined,
+    softwareVersion: r.software_version ?? undefined,
+    softwarePlatform: r.software_platform ?? undefined,
+    licenseType: r.license_type ?? undefined,
+    demoUrl: r.demo_url ?? undefined,
+    downloadUrl: r.download_url ?? undefined,
+    deliveryInstructions: r.delivery_instructions ?? undefined,
+    systemRequirements: r.system_requirements ?? undefined,
   }));
 
 
