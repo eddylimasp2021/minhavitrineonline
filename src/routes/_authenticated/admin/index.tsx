@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Eye, MousePointerClick, Heart, MessageCircle, TrendingUp, Users, Sparkles, Plus, CreditCard, FileText } from "lucide-react";
+import { Eye, MousePointerClick, Heart, MessageCircle, TrendingUp, Users, Sparkles, Plus, CreditCard, FileText, Radio } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { BackButton } from "@/components/layout/BackButton";
 
@@ -68,6 +68,12 @@ function AdminDash() {
               className="inline-flex h-11 items-center gap-2 rounded-xl border border-neon-purple/40 bg-neon-purple/10 px-5 font-semibold text-neon-purple hover:bg-neon-purple/20"
             >
               <FileText className="h-4 w-4" /> Configuração Fiscal & Notas
+            </Link>
+            <Link
+              to="/admin/live"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-5 font-semibold text-red-400 hover:bg-red-500/20"
+            >
+              <Radio className="h-4 w-4 text-red-500 animate-pulse" /> Estúdio Ao Vivo (Live Shopping)
             </Link>
             <Link
               to="/admin/pagamentos"

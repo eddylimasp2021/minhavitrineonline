@@ -16,6 +16,7 @@ import {
   Sparkles,
   Zap,
   FileText,
+  Radio,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuth, signOut } from "@/hooks/use-auth";
@@ -208,6 +209,24 @@ export function PerfilPage() {
             </div>
             <div className="mt-6 flex items-center gap-1 text-xs font-semibold text-neon-yellow">
               Acessar fiscal & notas <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/live"
+            className="group rounded-3xl border border-red-500/30 bg-red-500/5 p-6 hover:border-red-500/60 hover:bg-red-500/10 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-red-500/20 text-red-400 mb-4 group-hover:scale-110 transition-transform">
+                <Radio className="h-6 w-6 text-red-500 animate-pulse" />
+              </div>
+              <h3 className="font-display text-lg font-bold text-foreground">Estúdio Ao Vivo (Live Shopping)</h3>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                Transmita ao vivo usando webcam, celular ou tablet, fixe produtos na tela e lance ofertas relâmpago.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center gap-1 text-xs font-semibold text-red-400">
+              Abrir estúdio ao vivo <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>
         </section>

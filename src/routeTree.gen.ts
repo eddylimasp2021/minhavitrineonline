@@ -22,10 +22,12 @@ import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.
 import { Route as SitemapProductsDotxmlRouteImport } from './routes/sitemap-products[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as VitrineRouteImport } from './routes/vitrine'
+import { Route as LiveRouteImport } from './routes/live'
 import { Route as ApiGenerateProductInfoRouteImport } from './routes/api/generate-product-info'
 import { Route as VSlugRouteImport } from './routes/v.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminFiscalRouteImport } from './routes/_authenticated/admin/fiscal'
+import { Route as AuthenticatedAdminLiveRouteImport } from './routes/_authenticated/admin/live'
 import { Route as AuthenticatedAdminPagamentosRouteImport } from './routes/_authenticated/admin/pagamentos'
 import { Route as AuthenticatedAdminProdutosRouteImport } from './routes/_authenticated/admin/produtos'
 
@@ -93,6 +95,11 @@ const VitrineRoute = VitrineRouteImport.update({
   path: '/vitrine',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGenerateProductInfoRoute = ApiGenerateProductInfoRouteImport.update({
   id: '/api/generate-product-info',
   path: '/api/generate-product-info',
@@ -112,6 +119,12 @@ const AuthenticatedAdminFiscalRoute =
   AuthenticatedAdminFiscalRouteImport.update({
     id: '/admin/fiscal',
     path: '/admin/fiscal',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminLiveRoute =
+  AuthenticatedAdminLiveRouteImport.update({
+    id: '/admin/live',
+    path: '/admin/live',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminPagamentosRoute =
@@ -140,9 +153,11 @@ export interface FileRoutesByFullPath {
   '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
+  '/live': typeof LiveRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
   '/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
+  '/admin/live': typeof AuthenticatedAdminLiveRoute
   '/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/admin/produtos': typeof AuthenticatedAdminProdutosRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -160,9 +175,11 @@ export interface FileRoutesByTo {
   '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
+  '/live': typeof LiveRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
   '/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
+  '/admin/live': typeof AuthenticatedAdminLiveRoute
   '/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/admin/produtos': typeof AuthenticatedAdminProdutosRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -182,9 +199,11 @@ export interface FileRoutesById {
   '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
+  '/live': typeof LiveRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
   '/_authenticated/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
+  '/_authenticated/admin/live': typeof AuthenticatedAdminLiveRoute
   '/_authenticated/admin/pagamentos': typeof AuthenticatedAdminPagamentosRoute
   '/_authenticated/admin/produtos': typeof AuthenticatedAdminProdutosRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -204,9 +223,11 @@ export interface FileRouteTypes {
     | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
+    | '/live'
     | '/api/generate-product-info'
     | '/v/$slug'
     | '/admin/fiscal'
+    | '/admin/live'
     | '/admin/pagamentos'
     | '/admin/produtos'
     | '/admin/'
@@ -224,9 +245,11 @@ export interface FileRouteTypes {
     | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
+    | '/live'
     | '/api/generate-product-info'
     | '/v/$slug'
     | '/admin/fiscal'
+    | '/admin/live'
     | '/admin/pagamentos'
     | '/admin/produtos'
     | '/admin'
@@ -245,9 +268,11 @@ export interface FileRouteTypes {
     | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
+    | '/live'
     | '/api/generate-product-info'
     | '/v/$slug'
     | '/_authenticated/admin/fiscal'
+    | '/_authenticated/admin/live'
     | '/_authenticated/admin/pagamentos'
     | '/_authenticated/admin/produtos'
     | '/_authenticated/admin/'
@@ -267,6 +292,7 @@ export interface RootRouteChildren {
   SitemapProductsDotxmlRoute: typeof SitemapProductsDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VitrineRoute: typeof VitrineRoute
+  LiveRoute: typeof LiveRoute
   ApiGenerateProductInfoRoute: typeof ApiGenerateProductInfoRoute
   VSlugRoute: typeof VSlugRoute
 }
@@ -364,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VitrineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/generate-product-info': {
       id: '/api/generate-product-info'
       path: '/api/generate-product-info'
@@ -392,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFiscalRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/live': {
+      id: '/_authenticated/admin/live'
+      path: '/admin/live'
+      fullPath: '/admin/live'
+      preLoaderRoute: typeof AuthenticatedAdminLiveRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/pagamentos': {
       id: '/_authenticated/admin/pagamentos'
       path: '/admin/pagamentos'
@@ -411,6 +451,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminFiscalRoute: typeof AuthenticatedAdminFiscalRoute
+  AuthenticatedAdminLiveRoute: typeof AuthenticatedAdminLiveRoute
   AuthenticatedAdminPagamentosRoute: typeof AuthenticatedAdminPagamentosRoute
   AuthenticatedAdminProdutosRoute: typeof AuthenticatedAdminProdutosRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -418,6 +459,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminFiscalRoute: AuthenticatedAdminFiscalRoute,
+  AuthenticatedAdminLiveRoute: AuthenticatedAdminLiveRoute,
   AuthenticatedAdminPagamentosRoute: AuthenticatedAdminPagamentosRoute,
   AuthenticatedAdminProdutosRoute: AuthenticatedAdminProdutosRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
@@ -440,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapProductsDotxmlRoute: SitemapProductsDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VitrineRoute: VitrineRoute,
+  LiveRoute: LiveRoute,
   ApiGenerateProductInfoRoute: ApiGenerateProductInfoRoute,
   VSlugRoute: VSlugRoute,
 }

@@ -14,6 +14,7 @@ import {
   Laptop,
   ShieldCheck,
   FileText,
+  Radio,
 } from "lucide-react";
 import { useAuth, signOut } from "@/hooks/use-auth";
 import { useState, useRef, useEffect } from "react";
@@ -44,6 +45,7 @@ export function TopBar() {
 
   const navLinks = [
     { to: "/", label: "Início", exact: true },
+    { to: "/live", label: "Ao Vivo", isLive: true },
     { to: "/produtos", label: "Produtos" },
     { to: "/vitrine", label: "Vitrine 3D" },
     { to: "/promocoes", label: "Promoções" },
@@ -78,12 +80,17 @@ export function TopBar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-                  isActive
+                className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  link.isLive
+                    ? isActive
+                      ? "bg-red-600/30 text-red-400 border border-red-500/60 shadow-[0_0_12px_rgba(255,0,0,0.4)]"
+                      : "text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-red-500/20"
+                    : isActive
                     ? "bg-gradient-to-r from-neon-cyan/20 to-neon-purple/20 text-neon-cyan shadow-[0_0_12px_rgba(0,245,255,0.25)] border border-neon-cyan/40"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 }`}
               >
+                {link.isLive && <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />}
                 {link.label}
               </Link>
             );
@@ -224,6 +231,13 @@ export function TopBar() {
                         className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-medium hover:bg-white/5 transition-colors"
                       >
                         <FileText className="h-4 w-4 text-neon-yellow" /> Configuração Fiscal & Notas
+                      </Link>
+                      <Link
+                        to="/admin/live"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
+                        <Radio className="h-4 w-4 text-red-500 animate-pulse" /> Estúdio de Live Shopping
                       </Link>
                     </div>
                   )}
