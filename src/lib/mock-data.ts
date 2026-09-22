@@ -16,7 +16,38 @@ export type Product = {
   tag?: "novo" | "oferta" | "tendencia";
   rating?: number;
   whatsapp?: string;
+  /** fisico | digital | software | app */
+  productType?: string;
+  /** Link externo (site, loja de apps, download) para software/app. */
+  externalUrl?: string;
+  /** Texto customizado do botão (ex.: "Baixar app"). */
+  ctaLabel?: string;
 };
+
+export const PRODUCT_TYPES = [
+  { id: "fisico", label: "Produto físico" },
+  { id: "digital", label: "Produto digital" },
+  { id: "software", label: "Software" },
+  { id: "app", label: "Aplicativo" },
+] as const;
+
+export const isDigitalType = (t?: string | null) =>
+  t === "software" || t === "app" || t === "digital";
+
+/** Rótulo padrão do botão de acesso conforme o tipo. */
+export function defaultCtaLabel(type?: string | null) {
+  if (type === "app") return "Baixar o app";
+  if (type === "software") return "Acessar o software";
+  if (type === "digital") return "Acessar agora";
+  return "Abrir link";
+}
+
+/** Link de acesso externo, quando o produto for software/app/digital. */
+export function accessLink(p: Pick<Product, "productType" | "externalUrl" | "ctaLabel">) {
+  const url = (p.externalUrl ?? "").trim();
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  return { href: url, label: (p.ctaLabel ?? "").trim() || defaultCtaLabel(p.productType) };
+}
 
 export const products: Product[] = [
   {

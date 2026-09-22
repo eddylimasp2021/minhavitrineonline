@@ -30,7 +30,7 @@ export const getPublicProductBySlug = createServerFn({ method: "GET" })
     const supa = serverClient();
     const { data: prod, error } = await supa
       .from("products")
-      .select("id, slug, title, description, price, image_url, video_url, hashtags, whatsapp, category")
+      .select("id, slug, title, description, price, image_url, video_url, hashtags, whatsapp, category, product_type, external_url, cta_label")
       .eq("slug", data.slug)
       .eq("published", true)
       .maybeSingle();
@@ -57,6 +57,9 @@ export type PublicProductRow = {
   hashtags: string[] | null;
   whatsapp: string | null;
   category: string | null;
+  product_type: string | null;
+  external_url: string | null;
+  cta_label: string | null;
   created_at: string;
 };
 
@@ -112,7 +115,7 @@ export const listPublicProducts = createServerFn({ method: "GET" })
       let q = supa
         .from("products")
         .select(
-          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, created_at",
+          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, created_at",
           { count: "exact" },
         )
         .eq("published", true)
@@ -150,7 +153,7 @@ export const listPublicProducts = createServerFn({ method: "GET" })
       let q = supa
         .from("products")
         .select(
-          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, created_at",
+          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, created_at",
           { count: "exact" },
         )
         .eq("published", true)
