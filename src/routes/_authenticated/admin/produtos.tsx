@@ -9,7 +9,7 @@ import { BackButton } from "@/components/layout/BackButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { uniqueSlug } from "@/lib/slug";
-import { formatBRL } from "@/lib/mock-data";
+import { formatBRL, PRODUCT_TYPES, isDigitalType, defaultCtaLabel } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/_authenticated/admin/produtos")({
   head: () => ({ meta: [{ title: "Meus Produtos — NeonFlow Admin" }, { name: "robots", content: "noindex" }] }),
@@ -156,6 +156,9 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
   const [hashtags, setHashtags] = useState("");
   const [price, setPrice] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [productType, setProductType] = useState("fisico");
+  const [externalUrl, setExternalUrl] = useState("");
+  const [ctaLabel, setCtaLabel] = useState("");
   const [hint, setHint] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -245,6 +248,10 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
         .split(/[\s,]+/)
         .map((t) => t.replace(/^#/, "").trim())
         .filter(Boolean);
+      const link = externalUrl.trim();
+      if (isDigitalType(productType) && link && !/^https?:\/\//i.test(link)) {
+        throw new Error("O link deve começar com https://");
+      }
       const { error } = await supabase.from("products").insert({
         owner_id: user.id,
         slug,
@@ -255,6 +262,9 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
         price: Number(price) || 0,
         whatsapp,
         image_url,
+        product_type: productType,
+        external_url: isDigitalType(productType) && link ? link : null,
+        cta_label: isDigitalType(productType) && ctaLabel.trim() ? ctaLabel.trim() : null,
         published: true,
       });
       if (error) throw error;
@@ -316,7 +326,40 @@ function ProductForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
           <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none" />
           <input required type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Preço (R$)" className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none" />
           <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="WhatsApp (55119...)" className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none" />
+          <select
+            value={productType}
+            onChange={(e) => setProductType(e.target.value)}
+            className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none"
+          >
+            {PRODUCT_TYPES.map((t) => (
+              <option key={t.id} value={t.id} className="bg-background">{t.label}</option>
+            ))}
+          </select>
         </div>
+
+        {isDigitalType(productType) && (
+          <div className="mt-3 rounded-2xl border border-neon-purple/30 bg-neon-purple/5 p-4">
+            <p className="text-xs text-muted-foreground">
+              Produto digital: informe o link de acesso (site, Play Store, App Store ou download).
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <input
+                type="url"
+                inputMode="url"
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                placeholder="https://..."
+                className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none"
+              />
+              <input
+                value={ctaLabel}
+                onChange={(e) => setCtaLabel(e.target.value)}
+                placeholder={defaultCtaLabel(productType)}
+                className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none"
+              />
+            </div>
+          </div>
+        )}
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descrição" rows={3} className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm focus:border-neon-cyan/60 focus:outline-none" />
         <input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="#hashtag1 #hashtag2" className="mt-3 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none" />
 
