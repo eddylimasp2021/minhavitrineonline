@@ -106,12 +106,15 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string
+          cta_label: string | null
           description: string | null
+          external_url: string | null
           hashtags: string[]
           id: string
           image_url: string | null
           owner_id: string
           price: number
+          product_type: string
           published: boolean
           slug: string
           title: string
@@ -122,12 +125,15 @@ export type Database = {
         Insert: {
           category?: string | null
           created_at?: string
+          cta_label?: string | null
           description?: string | null
+          external_url?: string | null
           hashtags?: string[]
           id?: string
           image_url?: string | null
           owner_id: string
           price?: number
+          product_type?: string
           published?: boolean
           slug: string
           title: string
@@ -138,12 +144,15 @@ export type Database = {
         Update: {
           category?: string | null
           created_at?: string
+          cta_label?: string | null
           description?: string | null
+          external_url?: string | null
           hashtags?: string[]
           id?: string
           image_url?: string | null
           owner_id?: string
           price?: number
+          product_type?: string
           published?: boolean
           slug?: string
           title?: string
