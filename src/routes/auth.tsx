@@ -42,7 +42,13 @@ function AuthPage() {
   async function google() {
     setBusy(true);
     try {
-      await signInWithOAuth("google");
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth`,
+        },
+      });
+      if (error) throw error;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao autenticar com Google");
     } finally {
@@ -55,13 +61,24 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "in") {
-        await signInWithPassword(email, password);
-        toast.success("Login realizado com sucesso");
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password.trim(),
+        });
+        if (error) throw error;
+        toast.success("Login realizado com sucesso!");
       } else {
-        await signUp(email, password, fullName ? { full_name: fullName } : undefined);
-        toast.success("Conta criada com sucesso");
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: password.trim(),
+          options: {
+            data: fullName ? { full_name: fullName } : undefined,
+          },
+        });
+        if (error) throw error;
+        toast.success("Conta criada com sucesso!");
       }
-      nav({ to: redirect || "/" });
+      nav({ to: redirect || "/admin" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha na autenticação");
     } finally {
@@ -105,8 +122,8 @@ function AuthPage() {
         <form onSubmit={submit} className="space-y-3">
           {mode === "up" && (
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               placeholder="Nome completo"
               className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm focus:border-neon-cyan/60 focus:outline-none"
             />
