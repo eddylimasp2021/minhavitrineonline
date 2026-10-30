@@ -27,7 +27,7 @@ export const Route = createFileRoute("/v/$slug")({
     return { product: p };
   },
   head: ({ loaderData, params }) => {
-    const SITE = "https://minhavitrineonline.lovable.app";
+    const SITE = "https://minhavitrineonline.vercel.app";
     const DEFAULT_IMAGE = `${SITE}/og-default.jpg`;
     const p = loaderData?.product;
     if (!p) {

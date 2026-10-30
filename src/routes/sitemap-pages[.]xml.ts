@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const BASE_URL = "https://minhavitrineonline.lovable.app";
+const BASE_URL = "https://minhavitrineonline.vercel.app";
 
 const paths: { path: string; changefreq: string; priority: string }[] = [
   { path: "/", changefreq: "daily", priority: "1.0" },

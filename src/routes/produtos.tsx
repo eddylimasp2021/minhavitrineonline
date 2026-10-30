@@ -12,7 +12,7 @@ import { Search, X, Loader2, PackageSearch, AlertTriangle, RefreshCw } from "luc
 type ProdSearch = { q?: string; cat?: string };
 const PAGE_SIZE = 12;
 const DEBOUNCE_MS = 350;
-const SITE = "https://minhavitrineonline.lovable.app";
+const SITE = "https://minhavitrineonline.vercel.app";
 
 export const Route = createFileRoute("/produtos")({
   validateSearch: (s: Record<string, unknown>): ProdSearch => ({

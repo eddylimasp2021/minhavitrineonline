@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { listPublicProductSlugs } from "@/lib/public.functions";
 
-const BASE_URL = "https://minhavitrineonline.lovable.app";
+const BASE_URL = "https://minhavitrineonline.vercel.app";
 
 export const Route = createFileRoute("/sitemap-products.xml")({
   server: {
