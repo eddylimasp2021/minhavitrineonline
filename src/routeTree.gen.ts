@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as FavoritosRouteImport } from './routes/favoritos'
+import { Route as LiveRouteImport } from './routes/live'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as ProdutosRouteImport } from './routes/produtos'
@@ -22,7 +23,6 @@ import { Route as SitemapPagesDotxmlRouteImport } from './routes/sitemap-pages[.
 import { Route as SitemapProductsDotxmlRouteImport } from './routes/sitemap-products[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as VitrineRouteImport } from './routes/vitrine'
-import { Route as LiveRouteImport } from './routes/live'
 import { Route as ApiGenerateProductInfoRouteImport } from './routes/api/generate-product-info'
 import { Route as VSlugRouteImport } from './routes/v.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -53,6 +53,11 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
 const FavoritosRoute = FavoritosRouteImport.update({
   id: '/favoritos',
   path: '/favoritos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificacoesRoute = NotificacoesRouteImport.update({
@@ -95,11 +100,6 @@ const VitrineRoute = VitrineRouteImport.update({
   path: '/vitrine',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LiveRoute = LiveRouteImport.update({
-  id: '/live',
-  path: '/live',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiGenerateProductInfoRoute = ApiGenerateProductInfoRouteImport.update({
   id: '/api/generate-product-info',
   path: '/api/generate-product-info',
@@ -121,12 +121,11 @@ const AuthenticatedAdminFiscalRoute =
     path: '/admin/fiscal',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminLiveRoute =
-  AuthenticatedAdminLiveRouteImport.update({
-    id: '/admin/live',
-    path: '/admin/live',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
+const AuthenticatedAdminLiveRoute = AuthenticatedAdminLiveRouteImport.update({
+  id: '/admin/live',
+  path: '/admin/live',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminPagamentosRoute =
   AuthenticatedAdminPagamentosRouteImport.update({
     id: '/admin/pagamentos',
@@ -145,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
+  '/live': typeof LiveRoute
   '/notificacoes': typeof NotificacoesRoute
   '/perfil': typeof PerfilRoute
   '/produtos': typeof ProdutosRoute
@@ -153,7 +153,6 @@ export interface FileRoutesByFullPath {
   '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
-  '/live': typeof LiveRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
   '/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
@@ -167,6 +166,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
+  '/live': typeof LiveRoute
   '/notificacoes': typeof NotificacoesRoute
   '/perfil': typeof PerfilRoute
   '/produtos': typeof ProdutosRoute
@@ -175,7 +175,6 @@ export interface FileRoutesByTo {
   '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
-  '/live': typeof LiveRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
   '/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
@@ -191,6 +190,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/favoritos': typeof FavoritosRoute
+  '/live': typeof LiveRoute
   '/notificacoes': typeof NotificacoesRoute
   '/perfil': typeof PerfilRoute
   '/produtos': typeof ProdutosRoute
@@ -199,7 +199,6 @@ export interface FileRoutesById {
   '/sitemap-products.xml': typeof SitemapProductsDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vitrine': typeof VitrineRoute
-  '/live': typeof LiveRoute
   '/api/generate-product-info': typeof ApiGenerateProductInfoRoute
   '/v/$slug': typeof VSlugRoute
   '/_authenticated/admin/fiscal': typeof AuthenticatedAdminFiscalRoute
@@ -215,6 +214,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracoes'
     | '/favoritos'
+    | '/live'
     | '/notificacoes'
     | '/perfil'
     | '/produtos'
@@ -223,7 +223,6 @@ export interface FileRouteTypes {
     | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
-    | '/live'
     | '/api/generate-product-info'
     | '/v/$slug'
     | '/admin/fiscal'
@@ -237,6 +236,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracoes'
     | '/favoritos'
+    | '/live'
     | '/notificacoes'
     | '/perfil'
     | '/produtos'
@@ -245,7 +245,6 @@ export interface FileRouteTypes {
     | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
-    | '/live'
     | '/api/generate-product-info'
     | '/v/$slug'
     | '/admin/fiscal'
@@ -260,6 +259,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracoes'
     | '/favoritos'
+    | '/live'
     | '/notificacoes'
     | '/perfil'
     | '/produtos'
@@ -268,7 +268,6 @@ export interface FileRouteTypes {
     | '/sitemap-products.xml'
     | '/sitemap.xml'
     | '/vitrine'
-    | '/live'
     | '/api/generate-product-info'
     | '/v/$slug'
     | '/_authenticated/admin/fiscal'
@@ -284,6 +283,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FavoritosRoute: typeof FavoritosRoute
+  LiveRoute: typeof LiveRoute
   NotificacoesRoute: typeof NotificacoesRoute
   PerfilRoute: typeof PerfilRoute
   ProdutosRoute: typeof ProdutosRoute
@@ -292,7 +292,6 @@ export interface RootRouteChildren {
   SitemapProductsDotxmlRoute: typeof SitemapProductsDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VitrineRoute: typeof VitrineRoute
-  LiveRoute: typeof LiveRoute
   ApiGenerateProductInfoRoute: typeof ApiGenerateProductInfoRoute
   VSlugRoute: typeof VSlugRoute
 }
@@ -332,6 +331,13 @@ declare module '@tanstack/react-router' {
       path: '/favoritos'
       fullPath: '/favoritos'
       preLoaderRoute: typeof FavoritosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notificacoes': {
@@ -388,13 +394,6 @@ declare module '@tanstack/react-router' {
       path: '/vitrine'
       fullPath: '/vitrine'
       preLoaderRoute: typeof VitrineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/live': {
-      id: '/live'
-      path: '/live'
-      fullPath: '/live'
-      preLoaderRoute: typeof LiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate-product-info': {
@@ -474,6 +473,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   FavoritosRoute: FavoritosRoute,
+  LiveRoute: LiveRoute,
   NotificacoesRoute: NotificacoesRoute,
   PerfilRoute: PerfilRoute,
   ProdutosRoute: ProdutosRoute,
@@ -482,7 +482,6 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapProductsDotxmlRoute: SitemapProductsDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VitrineRoute: VitrineRoute,
-  LiveRoute: LiveRoute,
   ApiGenerateProductInfoRoute: ApiGenerateProductInfoRoute,
   VSlugRoute: VSlugRoute,
 }
