@@ -166,6 +166,17 @@ async function main() {
     console.log(`ID: ${deployRes.id}`);
     console.log(`URL do Deploy: https://${deployRes.url}`);
     console.log(`Inspetor Vercel: https://${deployRes.inspectorUrl || 'vercel.com'}`);
+
+    // Atribuir domínio de produção ao deploy
+    try {
+      await api(`/v2/deployments/${deployRes.id}/aliases`, {
+        method: 'POST',
+        body: JSON.stringify({ alias: targetDomain })
+      });
+      console.log(`Domínio ${targetDomain} vinculado imediatamente ao novo deploy!`);
+    } catch (aErr) {
+      console.log('Aviso ao vincular alias:', aErr.message);
+    }
   } catch (err) {
     console.log('Deploy automático via API:', err.message);
   }
