@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   X,
   Check,
+  CreditCard,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { BackButton } from "@/components/layout/BackButton";
@@ -616,6 +617,38 @@ function ProductForm({
           </div>
         </div>
 
+        {/* Gateway de Pagamento / Link do Cartão */}
+        <div className="mt-4 rounded-2xl border border-neon-cyan/30 bg-neon-cyan/5 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-neon-cyan font-bold text-xs uppercase tracking-wider">
+            <CreditCard className="h-4 w-4" /> Gateway de Pagamento / Cartão de Crédito
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Insira o link de pagamento do seu gateway (Mercado Pago, PagBank, Stripe, Asaas, etc.). Ele será aberto quando o cliente clicar no botão <strong>"Pagar com Cartão de Crédito"</strong> na vitrine.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Link do Gateway (Cartão / Checkout)</label>
+              <input
+                type="url"
+                inputMode="url"
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                placeholder="ex.: https://mpago.la/... ou https://buy.stripe.com/..."
+                className="h-11 w-full rounded-xl border border-white/10 bg-background/80 px-3 text-xs focus:border-neon-cyan/60 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Texto do Botão na Vitrine</label>
+              <input
+                value={ctaLabel}
+                onChange={(e) => setCtaLabel(e.target.value)}
+                placeholder="Pagar com Cartão de Crédito"
+                className="h-11 w-full rounded-xl border border-white/10 bg-background/80 px-3 text-xs focus:border-neon-cyan/60 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
         {isDigital && (
           <div className="mt-4 space-y-4 rounded-2xl border border-neon-cyan/30 bg-neon-cyan/5 p-4">
             <div className="flex items-center gap-2 text-neon-cyan font-semibold text-sm">
@@ -681,30 +714,6 @@ function ProductForm({
                   value={demoUrl}
                   onChange={(e) => setDemoUrl(e.target.value)}
                   placeholder="https://demo.meusoftware.com ou vídeo do Youtube"
-                  className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-xs focus:border-neon-cyan/60 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Link Externo / Acesso Direto</label>
-                <input
-                  type="url"
-                  inputMode="url"
-                  value={externalUrl}
-                  onChange={(e) => setExternalUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-xs focus:border-neon-cyan/60 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Texto do Botão na Vitrine (CTA)</label>
-                <input
-                  value={ctaLabel}
-                  onChange={(e) => setCtaLabel(e.target.value)}
-                  placeholder={defaultCtaLabel(productType)}
                   className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-xs focus:border-neon-cyan/60 focus:outline-none"
                 />
               </div>

@@ -68,10 +68,7 @@ export const isDigitalType = (t?: string | null) =>
 
 /** Rótulo padrão do botão de acesso conforme o tipo. */
 export function defaultCtaLabel(type?: string | null) {
-  if (type === "app") return "Baixar o app";
-  if (type === "software") return "Adquirir Licença";
-  if (type === "digital") return "Acessar agora";
-  return "Abrir link";
+  return "Pagar com Cartão de Crédito";
 }
 
 /** Link de acesso externo, quando o produto for software/app/digital. */

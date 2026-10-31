@@ -13,6 +13,7 @@ import {
   Sparkles,
   Download,
   Cpu,
+  CreditCard,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { getPublicProductBySlug } from "@/lib/public.functions";
@@ -111,6 +112,12 @@ function PublicProduct() {
     externalUrl: p.external_url ?? undefined,
     ctaLabel: p.cta_label ?? undefined,
   });
+
+  const hasExternalUrl = !!(p.external_url && /^https?:\/\//i.test(p.external_url));
+  const cardUrl = hasExternalUrl ? p.external_url : null;
+  const cardLabel = (p.cta_label && p.cta_label.trim()) || "Pagar com Cartão de Crédito";
+  const cardFallbackMsg = `Olá! Tenho interesse no produto *${p.title}* (${formatBRL(Number(p.price))}). Gostaria de realizar o pagamento via Cartão de Crédito. Pode me enviar o link de checkout?`;
+  const cardFallbackUrl = buildWhatsAppUrl(p.whatsapp || WHATSAPP_NUMBER, cardFallbackMsg);
 
   const licenseLabel =
     LICENSE_TYPES.find((l) => l.id === p.license_type)?.label ?? p.license_type ?? "Vitalícia";
@@ -253,18 +260,19 @@ function PublicProduct() {
               </a>
             )}
 
-            {access && (
-              <a
-                href={access.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("checkout_start", { product_id: p.id, metadata: { source: "external_link" } })}
-                className="inline-flex h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-purple px-5 font-semibold text-background hover:opacity-90"
-              >
-                <ExternalLink className="h-4 w-4" /> {access.label}
-              </a>
-            )}
+            {/* Botão de Cartão de Crédito / Gateway */}
+            <a
+              href={cardUrl || cardFallbackUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => track("checkout_start", { product_id: p.id, metadata: { source: cardUrl ? "gateway_link" : "whatsapp_card_request" } })}
+              className="inline-flex h-12 items-center gap-2.5 rounded-xl bg-gradient-to-r from-neon-cyan via-blue-500 to-neon-purple px-6 font-bold text-background hover:opacity-95 shadow-[0_0_20px_rgba(0,245,255,0.35)] transition-all transform hover:-translate-y-0.5"
+            >
+              <CreditCard className="h-5 w-5" />
+              {cardLabel}
+            </a>
 
+            {/* Botão WhatsApp */}
             {waUrl && (
               <a
                 href={waUrl}
@@ -273,7 +281,7 @@ function PublicProduct() {
                 onClick={() => track("whatsapp_click", { product_id: p.id })}
                 className="inline-flex h-12 items-center gap-2 rounded-xl bg-neon-green px-6 font-semibold text-background hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(0,255,102,0.3)]"
               >
-                <MessageCircle className="h-4 w-4" /> {isDigital ? "Adquirir Licença / Comprar" : "Comprar via WhatsApp"}
+                <MessageCircle className="h-4 w-4" /> {isDigital ? "Adquirir Licença / WhatsApp" : "Comprar via WhatsApp"}
               </a>
             )}
 
@@ -286,7 +294,13 @@ function PublicProduct() {
           </div>
 
           <div className="mt-8 flex items-center gap-4 rounded-2xl border border-white/10 glass p-4">
-            <img src={qrSrc} alt="QR Code" className="h-20 w-20 rounded-lg" />
+            {qrSrc ? (
+              <img src={qrSrc} alt="QR Code" className="h-20 w-20 rounded-lg bg-white p-1" />
+            ) : (
+              <div className="h-20 w-20 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-neon-cyan">
+                <QrCode className="h-8 w-8 opacity-60" />
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-neon-cyan">
                 <QrCode className="h-3.5 w-3.5" /> Aponte a câmera
