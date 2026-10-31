@@ -82,6 +82,10 @@ async function main() {
   const envVars = [
     { key: 'VITE_SUPABASE_URL', value: 'https://ggsdxkwwcobobjrqujem.supabase.co' },
     { key: 'VITE_SUPABASE_ANON_KEY', value: 'sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT' },
+    { key: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: 'sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT' },
+    { key: 'SUPABASE_URL', value: 'https://ggsdxkwwcobobjrqujem.supabase.co' },
+    { key: 'SUPABASE_PUBLISHABLE_KEY', value: 'sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT' },
+    { key: 'SUPABASE_ANON_KEY', value: 'sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT' },
     { key: 'NITRO_PRESET', value: 'vercel' },
     { key: 'DANGEROUSLY_DEPLOY_VULNERABLE_TANSTACK_START_XSS', value: '1' }
   ];
