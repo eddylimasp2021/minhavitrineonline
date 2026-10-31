@@ -18,7 +18,7 @@ async function assertAdmin(ctx: { supabase: { rpc: (n: string, p: unknown) => { 
  */
 export const getAdminStats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => RangeInput.parse(i))
+  .validator((i: unknown) => RangeInput.parse(i))
   .handler(async ({ data, context }) => {
     await assertAdmin(context as never);
     const from = data.from;

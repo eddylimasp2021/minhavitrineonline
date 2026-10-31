@@ -37,7 +37,7 @@ function serverClient() {
  * Public read: fetch a published product by slug for /v/:slug OG rendering.
  */
 export const getPublicProductBySlug = createServerFn({ method: "GET" })
-  .inputValidator((i: unknown) => z.object({ slug: z.string().min(1) }).parse(i))
+  .validator((i: unknown) => z.object({ slug: z.string().min(1) }).parse(i))
   .handler(async ({ data }) => {
     try {
       const supa = serverClient();
@@ -127,7 +127,7 @@ export type PublicProductsPage = {
  * and ranked search (title > category/hashtags > description).
  */
 export const listPublicProducts = createServerFn({ method: "GET" })
-  .inputValidator((i: unknown) =>
+  .validator((i: unknown) =>
     z
       .object({
         q: z.string().optional(),
