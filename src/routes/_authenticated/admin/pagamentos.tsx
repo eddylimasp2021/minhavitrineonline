@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CreditCard, ShieldCheck, Save, Star } from "lucide-react";
+import { CreditCard, ShieldCheck, Save, Star, FileText } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { BackButton } from "@/components/layout/BackButton";
+import { PixReceiptGenerator } from "@/components/admin/PixReceiptGenerator";
 
 export const Route = createFileRoute("/_authenticated/admin/pagamentos")({
   head: () => ({
@@ -96,6 +97,7 @@ function emptyConfig(): Config {
 
 function AdminPayments() {
   const [config, setConfig] = useState<Config>(emptyConfig);
+  const [activeTab, setActiveTab] = useState<"apis" | "comprovante">("apis");
 
   useEffect(() => {
     try {
@@ -120,94 +122,135 @@ function AdminPayments() {
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-neon-purple/30 bg-neon-purple/10 px-3 py-1 text-xs text-neon-purple">
-              <CreditCard className="h-3.5 w-3.5" /> {activeCount} ativo(s)
+              <CreditCard className="h-3.5 w-3.5" /> {activeTab === "apis" ? `${activeCount} ativo(s)` : "Módulo PIX"}
             </span>
-            <h1 className="mt-3 font-display text-3xl font-black sm:text-4xl">APIs de Pagamento</h1>
+            <h1 className="mt-3 font-display text-3xl font-black sm:text-4xl">
+              {activeTab === "apis" ? "APIs de Pagamento" : "Comprovante de Pagamento PIX"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Ative quantos provedores quiser e marque um como principal do checkout.
+              {activeTab === "apis"
+                ? "Ative quantos provedores quiser e marque um como principal do checkout."
+                : "Gere comprovantes manuais de transferências PIX recebidas de clientes para impressão, PDF ou envio no WhatsApp."}
             </p>
           </div>
+          {activeTab === "apis" && (
+            <button
+              onClick={save}
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 font-semibold text-background hover:opacity-90"
+            >
+              <Save className="h-4 w-4" /> Salvar
+            </button>
+          )}
+        </div>
+
+        {/* Abas de Navegação */}
+        <div className="mt-6 flex border-b border-white/10 gap-2">
           <button
-            onClick={save}
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-magenta px-5 font-semibold text-background hover:opacity-90"
+            type="button"
+            onClick={() => setActiveTab("apis")}
+            className={`inline-flex items-center gap-2 pb-3 px-4 text-sm font-semibold transition border-b-2 -mb-px ${
+              activeTab === "apis"
+                ? "border-neon-cyan text-neon-cyan"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <Save className="h-4 w-4" /> Salvar
+            <CreditCard className="h-4 w-4" /> APIs de Pagamento
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("comprovante")}
+            className={`inline-flex items-center gap-2 pb-3 px-4 text-sm font-semibold transition border-b-2 -mb-px ${
+              activeTab === "comprovante"
+                ? "border-neon-cyan text-neon-cyan"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <FileText className="h-4 w-4" /> Gerador de Comprovante PIX
+            <span className="rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-medium">
+              Novo
+            </span>
           </button>
         </div>
       </header>
 
-      <div className="mt-6 flex items-start gap-3 rounded-2xl border border-neon-green/20 bg-neon-green/5 p-4 text-xs text-muted-foreground">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-neon-green" />
-        <p>
-          Guarde aqui apenas dados públicos (chave publicável, client ID, links de pagamento). Chaves secretas
-          nunca devem ficar no navegador — peça para adicioná-las como segredo do backend.
-        </p>
-      </div>
+      {activeTab === "apis" ? (
+        <>
+          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-neon-green/20 bg-neon-green/5 p-4 text-xs text-muted-foreground">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-neon-green" />
+            <p>
+              Guarde aqui apenas dados públicos (chave publicável, client ID, links de pagamento). Chaves secretas
+              nunca devem ficar no navegador — peça para adicioná-las como segredo do backend.
+            </p>
+          </div>
 
-      <section className="mt-8 grid gap-4 md:grid-cols-2">
-        {PROVIDERS.map((p) => {
-          const c = config[p.id] ?? { enabled: false, values: {} };
-          return (
-            <article
-              key={p.id}
-              className={`rounded-3xl border p-5 glass transition ${c.enabled ? "border-neon-cyan/40" : "border-white/10"}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="font-display text-lg font-bold">{p.name}</h2>
-                  <p className="text-xs text-muted-foreground">{p.hint}</p>
-                </div>
-                <button
-                  role="switch"
-                  aria-checked={c.enabled}
-                  aria-label={`Ativar ${p.name}`}
-                  onClick={() =>
-                    setConfig((s) => ({ ...s, [p.id]: { ...c, enabled: !c.enabled } }))
-                  }
-                  className={`relative h-7 w-12 shrink-0 rounded-full border transition ${c.enabled ? "border-neon-cyan/60 bg-neon-cyan/30" : "border-white/10 bg-white/5"}`}
+          <section className="mt-8 grid gap-4 md:grid-cols-2">
+            {PROVIDERS.map((p) => {
+              const c = config[p.id] ?? { enabled: false, values: {} };
+              return (
+                <article
+                  key={p.id}
+                  className={`rounded-3xl border p-5 glass transition ${c.enabled ? "border-neon-cyan/40" : "border-white/10"}`}
                 >
-                  <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full transition ${c.enabled ? "left-6 bg-neon-cyan shadow-[0_0_12px_var(--neon-cyan)]" : "left-0.5 bg-muted-foreground"}`}
-                  />
-                </button>
-              </div>
-
-              {c.enabled && (
-                <div className="mt-4 space-y-3">
-                  {p.fields.map((f) => (
-                    <label key={f.key} className="block">
-                      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{f.label}</span>
-                      <input
-                        value={c.values[f.key] ?? ""}
-                        placeholder={f.placeholder}
-                        onChange={(e) =>
-                          setConfig((s) => ({
-                            ...s,
-                            [p.id]: { ...c, values: { ...c.values, [f.key]: e.target.value } },
-                          }))
-                        }
-                        className="mt-1 h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm focus:border-neon-cyan/60 focus:outline-none focus:ring-2 focus:ring-neon-cyan/30"
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="font-display text-lg font-bold">{p.name}</h2>
+                      <p className="text-xs text-muted-foreground">{p.hint}</p>
+                    </div>
+                    <button
+                      role="switch"
+                      aria-checked={c.enabled}
+                      aria-label={`Ativar ${p.name}`}
+                      onClick={() =>
+                        setConfig((s) => ({ ...s, [p.id]: { ...c, enabled: !c.enabled } }))
+                      }
+                      className={`relative h-7 w-12 shrink-0 rounded-full border transition ${c.enabled ? "border-neon-cyan/60 bg-neon-cyan/30" : "border-white/10 bg-white/5"}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full transition ${c.enabled ? "left-6 bg-neon-cyan shadow-[0_0_12px_var(--neon-cyan)]" : "left-0.5 bg-muted-foreground"}`}
                       />
-                    </label>
-                  ))}
-                  <button
-                    onClick={() =>
-                      setConfig((s) => {
-                        const next: Config = {};
-                        for (const [k, v] of Object.entries(s)) next[k] = { ...v, primary: k === p.id };
-                        return next;
-                      })
-                    }
-                    className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold transition ${c.primary ? "bg-neon-cyan text-background" : "border border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"}`}
-                  >
-                    <Star className="h-3.5 w-3.5" /> {c.primary ? "Principal" : "Definir como principal"}
-                  </button>
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </section>
+                    </button>
+                  </div>
+
+                  {c.enabled && (
+                    <div className="mt-4 space-y-3">
+                      {p.fields.map((f) => (
+                        <label key={f.key} className="block">
+                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{f.label}</span>
+                          <input
+                            value={c.values[f.key] ?? ""}
+                            placeholder={f.placeholder}
+                            onChange={(e) =>
+                              setConfig((s) => ({
+                                ...s,
+                                [p.id]: { ...c, values: { ...c.values, [f.key]: e.target.value } },
+                              }))
+                            }
+                            className="mt-1 h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm focus:border-neon-cyan/60 focus:outline-none focus:ring-2 focus:ring-neon-cyan/30"
+                          />
+                        </label>
+                      ))}
+                      <button
+                        onClick={() =>
+                          setConfig((s) => {
+                            const next: Config = {};
+                            for (const [k, v] of Object.entries(s)) next[k] = { ...v, primary: k === p.id };
+                            return next;
+                          })
+                        }
+                        className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold transition ${c.primary ? "bg-neon-cyan text-background" : "border border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"}`}
+                      >
+                        <Star className="h-3.5 w-3.5" /> {c.primary ? "Principal" : "Definir como principal"}
+                      </button>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+        </>
+      ) : (
+        <PixReceiptGenerator />
+      )}
     </AppShell>
   );
 }
