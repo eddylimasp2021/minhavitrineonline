@@ -30,7 +30,12 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  const err = consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`);
+  const captured = consumeLastCapturedError();
+  const err =
+    captured ??
+    new Error(
+      `h3 swallowed SSR error:\nBody: ${body}\nEnv keys: ${Object.keys(process.env).filter(k => !k.includes('KEY') && !k.includes('SECRET')).join(', ')}\nSUPABASE_URL set: ${Boolean(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)}`
+    );
   console.error(err);
   return new Response(renderErrorPage(err), {
     status: 500,

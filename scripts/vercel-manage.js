@@ -154,10 +154,11 @@ async function main() {
       body: JSON.stringify({
         name: mainProject.name,
         project: mainProject.id,
+        target: 'production',
         gitSource: {
           type: 'github',
           ref: 'main',
-          repoId: mainProject.link?.repoId
+          repoId: mainProject.link?.repoId || '1381938000'
         }
       })
     });
