@@ -175,6 +175,8 @@ export const listPublicProducts = createServerFn({ method: "GET" })
             { count: "exact" },
           )
           .eq("published", true)
+          .neq("category", "[CONFIG]")
+          .neq("slug", "__store_payment_gateways__")
           .or(
             `title.ilike.${like},description.ilike.${like},category.ilike.${like}`,
           )
@@ -224,6 +226,8 @@ export const listPublicProducts = createServerFn({ method: "GET" })
             { count: "exact" },
           )
           .eq("published", true)
+          .neq("category", "[CONFIG]")
+          .neq("slug", "__store_payment_gateways__")
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
         if (data.category) {

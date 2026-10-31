@@ -79,6 +79,8 @@ function AdminProducts() {
       const { data, error } = await supabase
         .from("products")
         .select("*")
+        .neq("category", "[CONFIG]")
+        .neq("slug", "__store_payment_gateways__")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as ProductRow[];

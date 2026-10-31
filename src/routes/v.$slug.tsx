@@ -18,7 +18,9 @@ import { AppShell } from "@/components/layout/AppShell";
 import { getPublicProductBySlug } from "@/lib/public.functions";
 import { formatBRL, buildWhatsAppUrl, accessLink, isDigitalType, LICENSE_TYPES, WHATSAPP_NUMBER } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { CreditCard, ShoppingBag } from "lucide-react";
+import { CheckoutModal } from "@/components/checkout/CheckoutModal";
 
 export const Route = createFileRoute("/v/$slug")({
   loader: async ({ params }) => {
@@ -94,6 +96,7 @@ export const Route = createFileRoute("/v/$slug")({
 
 function PublicProduct() {
   const { product: p } = Route.useLoaderData();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const isDigital = isDigitalType(p.product_type);
 
   useEffect(() => {
@@ -241,6 +244,12 @@ function PublicProduct() {
 
           {/* Botões de Ação */}
           <div className="mt-8 flex flex-wrap gap-3">
+            <button
+              onClick={() => setCheckoutOpen(true)}
+              className="inline-flex h-12 items-center gap-2.5 rounded-xl bg-gradient-to-r from-neon-cyan via-neon-purple to-neon-magenta px-6 font-bold text-background hover:opacity-95 shadow-[0_0_25px_rgba(0,245,255,0.4)] transition-all transform hover:-translate-y-0.5"
+            >
+              <CreditCard className="h-5 w-5" /> Comprar Agora / Formas de Pagamento
+            </button>
             {p.demo_url && (
               <a
                 href={p.demo_url}
@@ -296,6 +305,11 @@ function PublicProduct() {
           </div>
         </div>
       </article>
+      <CheckoutModal
+        isOpen={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        product={p}
+      />
     </AppShell>
   );
 }
