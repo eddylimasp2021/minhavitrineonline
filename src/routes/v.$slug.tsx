@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import {
   Share2,
@@ -97,6 +98,26 @@ export const Route = createFileRoute("/v/$slug")({
 function PublicProduct() {
   const { product: p } = Route.useLoaderData();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [qrSrc, setQrSrc] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = `${window.location.origin}/v/${p.slug}`;
+      QRCode.toDataURL(url, {
+        margin: 1,
+        width: 240,
+        color: {
+          dark: "#00F5FF",
+          light: "#050816",
+        },
+      })
+        .then(setQrSrc)
+        .catch(() => {
+          // Fallback seguro caso falhe
+          setQrSrc(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&bgcolor=050816&color=00F5FF&data=${encodeURIComponent(url)}`);
+        });
+    }
+  }, [p.slug]);
   const isDigital = isDigitalType(p.product_type);
 
   useEffect(() => {
@@ -130,9 +151,7 @@ function PublicProduct() {
     }
   }
 
-  const qrSrc = typeof window !== "undefined"
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&bgcolor=050816&color=00F5FF&data=${encodeURIComponent(`${window.location.origin}/v/${p.slug}`)}`
-    : "";
+
 
   return (
     <AppShell>
@@ -295,7 +314,13 @@ function PublicProduct() {
           </div>
 
           <div className="mt-8 flex items-center gap-4 rounded-2xl border border-white/10 glass p-4">
-            <img src={qrSrc} alt="QR Code" className="h-20 w-20 rounded-lg" />
+            {qrSrc ? (
+              <img src={qrSrc} alt="QR Code" className="h-20 w-20 rounded-xl border border-neon-cyan/20 bg-[#050816] p-1 shadow-[0_0_15px_rgba(0,245,255,0.2)]" />
+            ) : (
+              <div className="grid h-20 w-20 place-items-center rounded-xl border border-white/10 bg-white/5 text-neon-cyan">
+                <QrCode className="h-8 w-8 animate-pulse" />
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-neon-cyan">
                 <QrCode className="h-3.5 w-3.5" /> Aponte a câmera
