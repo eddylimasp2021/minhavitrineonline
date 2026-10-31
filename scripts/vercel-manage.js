@@ -166,36 +166,6 @@ async function main() {
     console.log(`ID: ${deployRes.id}`);
     console.log(`URL do Deploy: https://${deployRes.url}`);
     console.log(`Inspetor Vercel: https://${deployRes.inspectorUrl || 'vercel.com'}`);
-
-    // Aguardar o deploy atingir o estado READY antes de atribuir o alias oficial
-    console.log(`Aguardando build finalizar na Vercel...`);
-    let ready = false;
-    for (let i = 0; i < 20; i++) {
-      await new Promise(r => setTimeout(r, 4000));
-      try {
-        const dCheck = await api(`/v13/deployments/${deployRes.id}`);
-        if (dCheck.readyState === 'READY') {
-          ready = true;
-          break;
-        }
-        if (dCheck.readyState === 'ERROR') {
-          console.error('Build falhou na Vercel:', dCheck);
-          break;
-        }
-      } catch { /* ignore */ }
-    }
-
-    if (ready) {
-      try {
-        await api(`/v2/deployments/${deployRes.id}/aliases`, {
-          method: 'POST',
-          body: JSON.stringify({ alias: targetDomain })
-        });
-        console.log(`✅ Domínio ${targetDomain} vinculado com sucesso ao novo deploy!`);
-      } catch (aErr) {
-        console.log('Aviso ao vincular alias:', aErr.message);
-      }
-    }
   } catch (err) {
     console.log('Deploy automático via API:', err.message);
   }

@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import {
   Share2,
@@ -19,9 +18,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { getPublicProductBySlug } from "@/lib/public.functions";
 import { formatBRL, buildWhatsAppUrl, accessLink, isDigitalType, LICENSE_TYPES, WHATSAPP_NUMBER } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
-import { useEffect, useState } from "react";
-import { CreditCard, ShoppingBag } from "lucide-react";
-import { CheckoutModal } from "@/components/checkout/CheckoutModal";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/v/$slug")({
   loader: async ({ params }) => {
@@ -97,27 +94,6 @@ export const Route = createFileRoute("/v/$slug")({
 
 function PublicProduct() {
   const { product: p } = Route.useLoaderData();
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [qrSrc, setQrSrc] = useState<string>("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const url = `${window.location.origin}/v/${p.slug}`;
-      QRCode.toDataURL(url, {
-        margin: 1,
-        width: 240,
-        color: {
-          dark: "#00F5FF",
-          light: "#050816",
-        },
-      })
-        .then(setQrSrc)
-        .catch(() => {
-          // Fallback seguro caso falhe
-          setQrSrc(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&bgcolor=050816&color=00F5FF&data=${encodeURIComponent(url)}`);
-        });
-    }
-  }, [p.slug]);
   const isDigital = isDigitalType(p.product_type);
 
   useEffect(() => {
@@ -151,7 +127,9 @@ function PublicProduct() {
     }
   }
 
-
+  const qrSrc = typeof window !== "undefined"
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&bgcolor=050816&color=00F5FF&data=${encodeURIComponent(`${window.location.origin}/v/${p.slug}`)}`
+    : "";
 
   return (
     <AppShell>
@@ -263,12 +241,6 @@ function PublicProduct() {
 
           {/* Botões de Ação */}
           <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              onClick={() => setCheckoutOpen(true)}
-              className="inline-flex h-12 items-center gap-2.5 rounded-xl bg-gradient-to-r from-neon-cyan via-neon-purple to-neon-magenta px-6 font-bold text-background hover:opacity-95 shadow-[0_0_25px_rgba(0,245,255,0.4)] transition-all transform hover:-translate-y-0.5"
-            >
-              <CreditCard className="h-5 w-5" /> Comprar Agora / Formas de Pagamento
-            </button>
             {p.demo_url && (
               <a
                 href={p.demo_url}
@@ -314,13 +286,7 @@ function PublicProduct() {
           </div>
 
           <div className="mt-8 flex items-center gap-4 rounded-2xl border border-white/10 glass p-4">
-            {qrSrc ? (
-              <img src={qrSrc} alt="QR Code" className="h-20 w-20 rounded-xl border border-neon-cyan/20 bg-[#050816] p-1 shadow-[0_0_15px_rgba(0,245,255,0.2)]" />
-            ) : (
-              <div className="grid h-20 w-20 place-items-center rounded-xl border border-white/10 bg-white/5 text-neon-cyan">
-                <QrCode className="h-8 w-8 animate-pulse" />
-              </div>
-            )}
+            <img src={qrSrc} alt="QR Code" className="h-20 w-20 rounded-lg" />
             <div>
               <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-neon-cyan">
                 <QrCode className="h-3.5 w-3.5" /> Aponte a câmera
@@ -330,11 +296,6 @@ function PublicProduct() {
           </div>
         </div>
       </article>
-      <CheckoutModal
-        isOpen={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        product={p}
-      />
     </AppShell>
   );
 }

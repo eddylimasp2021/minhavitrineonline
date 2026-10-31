@@ -1,6 +1,5 @@
-import QRCode from "qrcode";
 import { ExternalLink, Heart, MessageCircle, QrCode, Share2, ShoppingBag, Star, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { formatBRL, whatsappLink, accessLink, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
@@ -27,24 +26,6 @@ export function ProductCard({ product }: { product: Product }) {
   const remote = useFavorites();
   const isFav = remote.isAuthed ? remote.has(product.id) : local.has(product.id);
   const [qrOpen, setQrOpen] = useState(false);
-  const [modalQrSrc, setModalQrSrc] = useState<string>("");
-
-  useEffect(() => {
-    if (qrOpen && typeof window !== "undefined") {
-      QRCode.toDataURL(productUrl, {
-        margin: 1,
-        width: 320,
-        color: {
-          dark: "#00F5FF",
-          light: "#050816",
-        },
-      })
-        .then(setModalQrSrc)
-        .catch(() => {
-          setModalQrSrc(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&bgcolor=050816&color=00F5FF&data=${encodeURIComponent(productUrl)}`);
-        });
-    }
-  }, [qrOpen, productUrl]);
   const navigate = useNavigate();
 
   const productUrl = typeof window !== "undefined" ? `${window.location.origin}/v/${product.slug}` : `/v/${product.slug}`;
@@ -219,17 +200,11 @@ export function ProductCard({ product }: { product: Product }) {
             </button>
             <h3 className="font-display text-lg font-bold">{product.title}</h3>
             <p className="mt-1 text-xs text-muted-foreground">Escaneie para abrir</p>
-            {modalQrSrc ? (
-              <img
-                alt="QR"
-                className="mx-auto mt-4 h-56 w-56 rounded-2xl border border-neon-cyan/30 bg-[#050816] p-2 shadow-[0_0_20px_rgba(0,245,255,0.25)]"
-                src={modalQrSrc}
-              />
-            ) : (
-              <div className="mx-auto mt-4 grid h-56 w-56 place-items-center rounded-2xl border border-white/10 bg-white/5 text-neon-cyan">
-                <QrCode className="h-12 w-12 animate-pulse" />
-              </div>
-            )}
+            <img
+              alt="QR"
+              className="mx-auto mt-4 h-56 w-56 rounded-2xl bg-white p-2"
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(productUrl)}`}
+            />
             <p className="mt-3 truncate text-xs text-muted-foreground">{productUrl}</p>
           </div>
         </div>

@@ -95,29 +95,22 @@ function emptyConfig(): Config {
   return c;
 }
 
-import { fetchStorePaymentGateways, saveStorePaymentGateways, type StorePaymentGateways } from "@/lib/payment-gateways";
-
 function AdminPayments() {
   const [config, setConfig] = useState<Config>(emptyConfig);
   const [activeTab, setActiveTab] = useState<"apis" | "comprovante">("apis");
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchStorePaymentGateways().then((data) => {
-      setConfig({ ...emptyConfig(), ...(data as Config) });
-    });
+    try {
+      const raw = localStorage.getItem(STORAGE);
+      if (raw) setConfig({ ...emptyConfig(), ...(JSON.parse(raw) as Config) });
+    } catch {
+      /* ignore */
+    }
   }, []);
 
-  async function save() {
-    setSaving(true);
-    try {
-      await saveStorePaymentGateways(config as StorePaymentGateways);
-      toast.success("Provedores de pagamento salvos com sucesso e sincronizados com a vitrine!");
-    } catch {
-      toast.error("Erro ao salvar provedores de pagamento");
-    } finally {
-      setSaving(false);
-    }
+  function save() {
+    localStorage.setItem(STORAGE, JSON.stringify(config));
+    toast.success("Provedores de pagamento salvos");
   }
 
   const activeCount = Object.values(config).filter((c) => c.enabled).length;
