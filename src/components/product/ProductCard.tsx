@@ -180,16 +180,15 @@ export function ProductCard({ product }: { product: Product }) {
             </a>
           </div>
         ) : (
-          <a
-            href={waUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("checkout_start", { product_id: product.id })}
+          <Link
+            to="/v/$slug"
+            params={{ slug: product.slug }}
+            onClick={() => track("product_click", { product_id: product.id, metadata: { source: "card_buy_button" } })}
             className="btn-neon mt-1 w-full"
           >
             <ShoppingBag className="h-4 w-4" />
             Comprar agora
-          </a>
+          </Link>
         )}
       </div>
 
