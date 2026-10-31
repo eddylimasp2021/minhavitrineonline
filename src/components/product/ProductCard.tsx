@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
 import { ExternalLink, Heart, MessageCircle, QrCode, Share2, ShoppingBag, Star, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { formatBRL, whatsappLink, accessLink, PLACEHOLDER_IMAGE, type Product } from "@/lib/mock-data";
 import { track } from "@/hooks/use-track";
@@ -20,11 +20,6 @@ const tagLabel: Record<NonNullable<Product["tag"]>, string> = {
 };
 
 export function ProductCard({ product }: { product: Product }) {
-  const productUrl = typeof window !== "undefined" ? `${window.location.origin}/v/${product.slug}` : `/v/${product.slug}`;
-  const waUrl = whatsappLink(product);
-  const access = accessLink(product);
-  const image = product.image || PLACEHOLDER_IMAGE;
-
   const discount = product.oldPrice
     ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
     : 0;
@@ -33,12 +28,10 @@ export function ProductCard({ product }: { product: Product }) {
   const isFav = remote.isAuthed ? remote.has(product.id) : local.has(product.id);
   const [qrOpen, setQrOpen] = useState(false);
   const [modalQrSrc, setModalQrSrc] = useState<string>("");
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (qrOpen && typeof window !== "undefined") {
-      const urlToEncode = `${window.location.origin}/v/${product.slug}`;
-      QRCode.toDataURL(urlToEncode, {
+      QRCode.toDataURL(productUrl, {
         margin: 1,
         width: 320,
         color: {
@@ -48,10 +41,16 @@ export function ProductCard({ product }: { product: Product }) {
       })
         .then(setModalQrSrc)
         .catch(() => {
-          setModalQrSrc(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&bgcolor=050816&color=00F5FF&data=${encodeURIComponent(urlToEncode)}`);
+          setModalQrSrc(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&bgcolor=050816&color=00F5FF&data=${encodeURIComponent(productUrl)}`);
         });
     }
-  }, [qrOpen, product.slug]);
+  }, [qrOpen, productUrl]);
+  const navigate = useNavigate();
+
+  const productUrl = typeof window !== "undefined" ? `${window.location.origin}/v/${product.slug}` : `/v/${product.slug}`;
+  const waUrl = whatsappLink(product);
+  const access = accessLink(product);
+  const image = product.image || PLACEHOLDER_IMAGE;
 
   function toggleFav(e: React.MouseEvent) {
     e.preventDefault();
