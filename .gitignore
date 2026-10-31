@@ -21,6 +21,8 @@ dist-ssr
 .dev.vars
 cloudflared.exe
 .vercel/
+.vercel_auth.json
+.vercel_device.json
 
 # Editor directories and files
 .vscode/*
