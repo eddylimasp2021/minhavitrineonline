@@ -80,12 +80,12 @@ async function main() {
   // 4. Configurar variáveis de ambiente do Supabase
   console.log('\nConfigurando Variáveis de Ambiente no Projeto Principal...');
   const envVars = [
-    { key: 'VITE_SUPABASE_URL', value: 'https://ggsdxkwwcobobjrqujem.supabase.co' },
-    { key: 'VITE_SUPABASE_ANON_KEY', value: 'sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT' },
-    { key: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: 'sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT' },
-    { key: 'SUPABASE_URL', value: 'https://ggsdxkwwcobobjrqujem.supabase.co' },
-    { key: 'SUPABASE_PUBLISHABLE_KEY', value: 'sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT' },
-    { key: 'SUPABASE_ANON_KEY', value: 'sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT' },
+    { key: 'VITE_SUPABASE_URL', value: 'https://sfcmxyulzobpxeqkxjjg.supabase.co' },
+    { key: 'VITE_SUPABASE_ANON_KEY', value: 'sb_publishable_WVnemxk4hagjDy0Cj1cjOw_1nmVV_aM' },
+    { key: 'VITE_SUPABASE_PUBLISHABLE_KEY', value: 'sb_publishable_WVnemxk4hagjDy0Cj1cjOw_1nmVV_aM' },
+    { key: 'SUPABASE_URL', value: 'https://sfcmxyulzobpxeqkxjjg.supabase.co' },
+    { key: 'SUPABASE_PUBLISHABLE_KEY', value: 'sb_publishable_WVnemxk4hagjDy0Cj1cjOw_1nmVV_aM' },
+    { key: 'SUPABASE_ANON_KEY', value: 'sb_publishable_WVnemxk4hagjDy0Cj1cjOw_1nmVV_aM' },
     { key: 'NITRO_PRESET', value: 'vercel' },
     { key: 'DANGEROUSLY_DEPLOY_VULNERABLE_TANSTACK_START_XSS', value: '1' }
   ];

@@ -10,14 +10,14 @@ function serverClient() {
   const url =
     process.env.SUPABASE_URL ||
     process.env.VITE_SUPABASE_URL ||
-    "https://ggsdxkwwcobobjrqujem.supabase.co";
+    "https://sfcmxyulzobpxeqkxjjg.supabase.co";
 
   const key =
     process.env.SUPABASE_PUBLISHABLE_KEY ||
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
-    "sb_publishable_hTU4O9c7SoYD-EI-b8zPkQ_Vmy817sT";
+    "sb_publishable_WVnemxk4hagjDy0Cj1cjOw_1nmVV_aM";
 
   return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -161,86 +161,132 @@ export const listPublicProducts = createServerFn({ method: "GET" })
 
     let result: PublicProductsPage;
 
-    // Ranked search path: pull a wider window, score, sort, paginate in-memory.
-    if (term) {
-      const safe = term.replace(/[%,()]/g, " ");
-      const like = `%${safe}%`;
-      let q = supa
-        .from("products")
-        .select(
-          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements, created_at",
-          { count: "exact" },
-        )
-        .eq("published", true)
-        .or(
-          `title.ilike.${like},description.ilike.${like},category.ilike.${like}`,
-        )
-        .limit(200);
-      if (data.category) {
-        const catLower = data.category.toLowerCase();
-        if (catLower.includes("software")) {
-          q = q.or("category.ilike.%software%,product_type.eq.software");
-        } else if (catLower.includes("ia") || catLower.includes("automação") || catLower.includes("automacao")) {
-          q = q.or("category.ilike.%ia%,category.ilike.%inteligência%,category.ilike.%automação%,category.ilike.%automacao%");
-        } else if (catLower.includes("sistema") || catLower.includes("saas")) {
-          q = q.or("category.ilike.%sistema%,category.ilike.%saas%,category.ilike.%web%");
-        } else {
-          q = q.ilike("category", `%${data.category}%`);
+    try {
+      const supa = serverClient();
+
+      // Ranked search path: pull a wider window, score, sort, paginate in-memory.
+      if (term) {
+        const safe = term.replace(/[%,()]/g, " ");
+        const like = `%${safe}%`;
+        let q = supa
+          .from("products")
+          .select(
+            "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements, created_at",
+            { count: "exact" },
+          )
+          .eq("published", true)
+          .or(
+            `title.ilike.${like},description.ilike.${like},category.ilike.${like}`,
+          )
+          .limit(200);
+        if (data.category) {
+          const catLower = data.category.toLowerCase();
+          if (catLower.includes("software")) {
+            q = q.or("category.ilike.%software%,product_type.eq.software");
+          } else if (catLower.includes("ia") || catLower.includes("automação") || catLower.includes("automacao")) {
+            q = q.or("category.ilike.%ia%,category.ilike.%inteligência%,category.ilike.%automação%,category.ilike.%automacao%");
+          } else if (catLower.includes("sistema") || catLower.includes("saas")) {
+            q = q.or("category.ilike.%sistema%,category.ilike.%saas%,category.ilike.%web%");
+          } else {
+            q = q.ilike("category", `%${data.category}%`);
+          }
         }
+
+        const { data: rows, error, count } = await q;
+        if (error) throw new Error(error.message);
+
+        const t = safe.toLowerCase();
+        const scored = (rows ?? []).map((r) => {
+          let s = 0;
+          const title = r.title?.toLowerCase() ?? "";
+          const desc = r.description?.toLowerCase() ?? "";
+          const cate = r.category?.toLowerCase() ?? "";
+          const tags = (r.hashtags ?? []).join(" ").toLowerCase();
+          if (title === t) s += 100;
+          if (title.startsWith(t)) s += 40;
+          if (title.includes(t)) s += 20;
+          if (cate.includes(t)) s += 8;
+          if (tags.includes(t)) s += 6;
+          if (desc.includes(t)) s += 3;
+          return { r, s };
+        });
+        scored.sort((a, b) => b.s - a.s || (a.r.created_at < b.r.created_at ? 1 : -1));
+        const page = scored.slice(offset, offset + limit).map((x) => x.r);
+        const total = count ?? scored.length;
+        const nextOffset = offset + page.length < total ? offset + page.length : null;
+        result = { items: page as PublicProductRow[], nextOffset, total };
+      } else {
+        // No search: DB-side pagination via range().
+        let q = supa
+          .from("products")
+          .select(
+            "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements, created_at",
+            { count: "exact" },
+          )
+          .eq("published", true)
+          .order("created_at", { ascending: false })
+          .range(offset, offset + limit - 1);
+        if (data.category) {
+          const catLower = data.category.toLowerCase();
+          if (catLower.includes("software")) {
+            q = q.or("category.ilike.%software%,product_type.eq.software");
+          } else if (catLower.includes("ia") || catLower.includes("automação") || catLower.includes("automacao")) {
+            q = q.or("category.ilike.%ia%,category.ilike.%inteligência%,category.ilike.%automação%,category.ilike.%automacao%");
+          } else if (catLower.includes("sistema") || catLower.includes("saas")) {
+            q = q.or("category.ilike.%sistema%,category.ilike.%saas%,category.ilike.%web%");
+          } else {
+            q = q.ilike("category", `%${data.category}%`);
+          }
+        }
+
+        const { data: rows, error, count } = await q;
+        if (error) throw new Error(error.message);
+        const total = count ?? (rows?.length ?? 0);
+        const nextOffset = offset + (rows?.length ?? 0) < total ? offset + (rows?.length ?? 0) : null;
+        result = { items: (rows ?? []) as PublicProductRow[], nextOffset, total };
+      }
+    } catch (err) {
+      console.warn("Supabase query failed, using fallback products:", err);
+      let filtered = products.map((m) => ({
+        id: m.id,
+        slug: m.slug,
+        title: m.title,
+        description: m.description ?? "",
+        price: Number(m.price),
+        image_url: typeof m.image === "string" ? m.image : null,
+        hashtags: [],
+        whatsapp: m.whatsapp ?? null,
+        category: m.category ?? null,
+        product_type: m.productType ?? "physical",
+        external_url: m.externalUrl ?? null,
+        cta_label: m.ctaLabel ?? null,
+        software_version: m.softwareVersion ?? null,
+        software_platform: m.softwarePlatform ?? null,
+        license_type: m.licenseType ?? null,
+        demo_url: m.demoUrl ?? null,
+        download_url: m.downloadUrl ?? null,
+        delivery_instructions: m.deliveryInstructions ?? null,
+        system_requirements: m.systemRequirements ?? null,
+        created_at: new Date().toISOString(),
+      }));
+
+      if (data.category) {
+        filtered = filtered.filter((p) =>
+          p.category?.toLowerCase().includes(data.category!.toLowerCase()),
+        );
+      }
+      if (term) {
+        filtered = filtered.filter(
+          (p) =>
+            p.title.toLowerCase().includes(term.toLowerCase()) ||
+            p.description?.toLowerCase().includes(term.toLowerCase()),
+        );
       }
 
-      const { data: rows, error, count } = await q;
-      if (error) throw new Error(error.message);
-
-      const t = safe.toLowerCase();
-      const scored = (rows ?? []).map((r) => {
-        let s = 0;
-        const title = r.title?.toLowerCase() ?? "";
-        const desc = r.description?.toLowerCase() ?? "";
-        const cate = r.category?.toLowerCase() ?? "";
-        const tags = (r.hashtags ?? []).join(" ").toLowerCase();
-        if (title === t) s += 100;
-        if (title.startsWith(t)) s += 40;
-        if (title.includes(t)) s += 20;
-        if (cate.includes(t)) s += 8;
-        if (tags.includes(t)) s += 6;
-        if (desc.includes(t)) s += 3;
-        return { r, s };
-      });
-      scored.sort((a, b) => b.s - a.s || (a.r.created_at < b.r.created_at ? 1 : -1));
-      const page = scored.slice(offset, offset + limit).map((x) => x.r);
-      const total = count ?? scored.length;
+      const total = filtered.length;
+      const page = filtered.slice(offset, offset + limit);
       const nextOffset = offset + page.length < total ? offset + page.length : null;
-      result = { items: page as PublicProductRow[], nextOffset, total };
-    } else {
-      // No search: DB-side pagination via range().
-      let q = supa
-        .from("products")
-        .select(
-          "id, slug, title, description, price, image_url, hashtags, whatsapp, category, product_type, external_url, cta_label, software_version, software_platform, license_type, demo_url, download_url, delivery_instructions, system_requirements, created_at",
-          { count: "exact" },
-        )
-        .eq("published", true)
-        .order("created_at", { ascending: false })
-        .range(offset, offset + limit - 1);
-      if (data.category) {
-        const catLower = data.category.toLowerCase();
-        if (catLower.includes("software")) {
-          q = q.or("category.ilike.%software%,product_type.eq.software");
-        } else if (catLower.includes("ia") || catLower.includes("automação") || catLower.includes("automacao")) {
-          q = q.or("category.ilike.%ia%,category.ilike.%inteligência%,category.ilike.%automação%,category.ilike.%automacao%");
-        } else if (catLower.includes("sistema") || catLower.includes("saas")) {
-          q = q.or("category.ilike.%sistema%,category.ilike.%saas%,category.ilike.%web%");
-        } else {
-          q = q.ilike("category", `%${data.category}%`);
-        }
-      }
-
-      const { data: rows, error, count } = await q;
-      if (error) throw new Error(error.message);
-      const total = count ?? (rows?.length ?? 0);
-      const nextOffset = offset + (rows?.length ?? 0) < total ? offset + (rows?.length ?? 0) : null;
-      result = { items: (rows ?? []) as PublicProductRow[], nextOffset, total };
+      result = { items: page, nextOffset, total };
     }
 
     listCache.set(cacheKey, result);
