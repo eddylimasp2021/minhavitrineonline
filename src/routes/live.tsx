@@ -26,6 +26,13 @@ import {
   ChevronRight,
   ShieldCheck,
   X,
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  RotateCw,
+  Pin,
+  Settings,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import {
@@ -33,6 +40,9 @@ import {
   LiveChatMessage,
   LiveProductItem,
   loadLiveSession,
+  saveLiveSession,
+  startUserMediaStream,
+  startScreenShareStream,
   INITIAL_LIVE_SESSIONS,
   INITIAL_CHAT_MESSAGES,
 } from "@/lib/live-commerce";
@@ -67,6 +77,173 @@ function LiveShoppingPage() {
   const [isBagOpen, setIsBagOpen] = useState(false);
   const [checkoutProduct, setCheckoutProduct] = useState<LiveProductItem | null>(null);
   const [timeLeft, setTimeLeft] = useState<string>("05:00");
+
+  // Estados e Refs de Mídia (Câmera, Microfone e Transmissão)
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isMicActive, setIsMicActive] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Limpeza de mídia ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const stopAllTracks = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const startCamera = async (facing: "user" | "environment" = facingMode) => {
+    stopAllTracks();
+    try {
+      const stream = await startUserMediaStream(undefined, undefined, facing);
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+      stream.getAudioTracks().forEach((track) => (track.enabled = isMicActive));
+      setIsCameraActive(true);
+      setIsScreenSharing(false);
+      toast.success(
+        facing === "user"
+          ? "Câmera frontal conectada com sucesso!"
+          : "Câmera traseira conectada com sucesso!"
+      );
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Permissão de câmera negada ou dispositivo não encontrado.");
+    }
+  };
+
+  const toggleCamera = () => {
+    if (isCameraActive) {
+      stopAllTracks();
+      setIsCameraActive(false);
+      toast.info("Câmera desativada");
+    } else {
+      startCamera(facingMode);
+    }
+  };
+
+  const toggleMic = () => {
+    const nextState = !isMicActive;
+    setIsMicActive(nextState);
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getAudioTracks().forEach((track) => {
+        track.enabled = nextState;
+      });
+      toast.success(nextState ? "Microfone ativado" : "Microfone silenciado (mudo)");
+    } else {
+      toast.info(nextState ? "Microfone pronto (será ativado ao ligar a câmera)" : "Microfone silenciado");
+    }
+  };
+
+  const toggleFlipCamera = () => {
+    const nextFacing = facingMode === "user" ? "environment" : "user";
+    setFacingMode(nextFacing);
+    if (isCameraActive) {
+      startCamera(nextFacing);
+    } else {
+      toast.info(`Câmera configurada para modo ${nextFacing === "user" ? "Frontal" : "Traseiro"}`);
+    }
+  };
+
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      stopAllTracks();
+      setIsScreenSharing(false);
+      toast.info("Compartilhamento de tela finalizado");
+    } else {
+      stopAllTracks();
+      try {
+        const stream = await startScreenShareStream();
+        mediaStreamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+        }
+        setIsScreenSharing(true);
+        setIsCameraActive(false);
+
+        stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+          setIsScreenSharing(false);
+          if (videoRef.current) videoRef.current.srcObject = null;
+          toast.info("Compartilhamento de tela encerrado");
+        });
+
+        toast.success("Transmitindo tela do computador ao vivo!");
+      } catch (err) {
+        console.error(err);
+        toast.error("Não foi possível iniciar o compartilhamento de tela.");
+      }
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!playerContainerRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    } else {
+      playerContainerRef.current.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    }
+  };
+
+  const handlePinProduct = (product: LiveProductItem) => {
+    const updated: LiveSession = {
+      ...session,
+      pinnedProduct: product,
+    };
+    setSession(updated);
+    saveLiveSession(updated);
+    toast.success(`"${product.title}" fixado na tela da live!`);
+  };
+
+  const handleToggleFlashOffer = () => {
+    if (session.flashOffer?.active) {
+      const updated: LiveSession = {
+        ...session,
+        flashOffer: { ...session.flashOffer, active: false },
+      };
+      setSession(updated);
+      saveLiveSession(updated);
+      toast.info("Oferta relâmpago pausada");
+    } else {
+      const updated: LiveSession = {
+        ...session,
+        flashOffer: {
+          active: true,
+          productId: session.pinnedProduct?.id || session.products[0]?.id || "live-offer",
+          productTitle: session.pinnedProduct?.title || session.products[0]?.title || "Super Desconto de Live",
+          discountPrice: Math.round((session.pinnedProduct?.price || 150) * 0.7),
+          originalPrice: session.pinnedProduct?.price || 150,
+          endsAt: Date.now() + 1000 * 60 * 10, // 10 minutos
+          couponCode: "LIVE30OFF",
+        },
+      };
+      setSession(updated);
+      saveLiveSession(updated);
+      toast.success("🔥 Oferta Relâmpago iniciada com cronômetro de 10 min!");
+    }
+  };
 
   // Timer da oferta relâmpago
   useEffect(() => {
@@ -135,15 +312,21 @@ function LiveShoppingPage() {
   return (
     <AppShell>
       {/* Cabeçalho da Página Live */}
-      <header className="flex flex-wrap items-center justify-between gap-4">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-xs font-black text-white shadow-[0_0_15px_rgba(255,0,0,0.6)]">
               <span className="h-2 w-2 rounded-full bg-white animate-ping" /> AO VIVO
             </span>
             <span className="text-xs text-muted-foreground">
               {session.viewersCount} pessoas assistindo agora
             </span>
+            {(isCameraActive || isScreenSharing) && (
+              <span className="flex items-center gap-1 rounded-full bg-neon-green/20 border border-neon-green/40 px-2.5 py-0.5 text-[11px] font-bold text-neon-green">
+                <span className="h-1.5 w-1.5 rounded-full bg-neon-green animate-pulse" />
+                {isScreenSharing ? "Transmitindo Tela" : "Câmera Ao Vivo"}
+              </span>
+            )}
           </div>
           <h1 className="mt-2 font-display text-2xl font-black sm:text-3xl text-foreground">
             {session.title}
@@ -151,7 +334,89 @@ function LiveShoppingPage() {
           <p className="text-xs sm:text-sm text-muted-foreground">{session.subtitle}</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* MENU COMPLETO DE CONTROLES: CÂMERA, MICROFONE, GIRAR, TELA E APRESENTADOR */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Botão Câmera */}
+          <button
+            onClick={toggleCamera}
+            className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-all shadow-sm ${
+              isCameraActive
+                ? "border-neon-green/50 bg-neon-green/20 text-neon-green shadow-[0_0_15px_rgba(0,255,102,0.25)] hover:bg-neon-green/30"
+                : "border-white/10 bg-white/5 text-foreground hover:bg-white/10 hover:border-white/20"
+            }`}
+            title="Ligar ou desligar câmera"
+          >
+            {isCameraActive ? (
+              <>
+                <Video className="h-4 w-4 text-neon-green animate-pulse" />
+                <span>Câmera Ligada</span>
+              </>
+            ) : (
+              <>
+                <VideoOff className="h-4 w-4 text-muted-foreground" />
+                <span>Ligar Câmera</span>
+              </>
+            )}
+          </button>
+
+          {/* Botão Microfone */}
+          <button
+            onClick={toggleMic}
+            className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-all shadow-sm ${
+              isMicActive
+                ? "border-neon-cyan/50 bg-neon-cyan/20 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.25)] hover:bg-neon-cyan/30"
+                : "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+            }`}
+            title="Ativar ou silenciar microfone"
+          >
+            {isMicActive ? (
+              <>
+                <Mic className="h-4 w-4 text-neon-cyan" />
+                <span>Mic Ativo</span>
+              </>
+            ) : (
+              <>
+                <MicOff className="h-4 w-4 text-red-400" />
+                <span>Mic Mudo</span>
+              </>
+            )}
+          </button>
+
+          {/* Botão Girar Câmera (Frontal / Traseira) */}
+          <button
+            onClick={toggleFlipCamera}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-white/10 transition-colors"
+            title="Girar câmera (Frontal / Traseira)"
+          >
+            <RotateCw className="h-4 w-4 text-muted-foreground" />
+            <span className="hidden sm:inline">Girar Câmera</span>
+          </button>
+
+          {/* Botão Transmitir Tela */}
+          <button
+            onClick={toggleScreenShare}
+            className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-all ${
+              isScreenSharing
+                ? "border-neon-yellow/50 bg-neon-yellow/20 text-neon-yellow shadow-[0_0_15px_rgba(255,230,0,0.25)]"
+                : "border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+            }`}
+            title="Transmitir tela do computador"
+          >
+            <Laptop className="h-4 w-4" />
+            <span className="hidden sm:inline">{isScreenSharing ? "Parar Tela" : "Transmitir Tela"}</span>
+          </button>
+
+          {/* Botão Abrir Painel / Estúdio do Apresentador */}
+          <button
+            onClick={() => setIsStudioOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-neon-purple/40 bg-neon-purple/10 px-3.5 py-2.5 text-xs font-bold text-neon-purple hover:bg-neon-purple/20 transition-colors"
+            title="Abrir ferramentas de apresentação e fixar ofertas"
+          >
+            <Radio className="h-4 w-4" />
+            <span>Estúdio da Live</span>
+          </button>
+
+          {/* Botão Compartilhar */}
           <button
             onClick={() => {
               if (navigator.share) {
@@ -161,40 +426,68 @@ function LiveShoppingPage() {
                 toast.success("Link da live copiado!");
               }
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-foreground hover:bg-white/10 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-white/10 transition-colors"
+            title="Compartilhar link da transmissão"
           >
-            <Share2 className="h-4 w-4" /> Compartilhar Live
+            <Share2 className="h-4 w-4" />
+            <span className="hidden md:inline">Compartilhar</span>
           </button>
-
-          <Link
-            to="/admin/live"
-            className="inline-flex items-center gap-2 rounded-xl border border-neon-purple/40 bg-neon-purple/10 px-4 py-2.5 text-xs font-bold text-neon-purple hover:bg-neon-purple/20 transition-colors"
-          >
-            <Radio className="h-4 w-4" /> Abrir Estúdio (Apresentador)
-          </Link>
         </div>
       </header>
 
       {/* Grid Principal do Live Shopping */}
       <div className="mt-6 grid gap-6 lg:grid-cols-12">
-        {/* PLAYER DE VÍDEO IMERSIVO (8 Colunas) */}
-        <div className="relative aspect-video w-full overflow-hidden rounded-3xl border border-white/15 bg-black shadow-2xl lg:col-span-8 flex flex-col justify-between">
-          {/* Fundo do Vídeo / Stream Animado */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-black via-zinc-950 to-neutral-900 flex items-center justify-center">
-            {/* Visualizador de Demonstração / Stream Ativo */}
-            <div className="relative text-center p-6 animate-pulse">
-              <div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-tr from-neon-cyan/20 to-neon-purple/20 border border-white/10 text-neon-cyan">
-                <Laptop className="h-10 w-10" />
+        {/* ÁREA DE VÍDEO E CONTROLES RÁPIDOS (8 Colunas) */}
+        <div className="space-y-3 lg:col-span-8">
+          {/* PLAYER DE VÍDEO IMERSIVO */}
+          <div
+            ref={playerContainerRef}
+            className="relative aspect-video w-full overflow-hidden rounded-3xl border border-white/15 bg-black shadow-2xl flex flex-col justify-between"
+          >
+          {/* Tag de Vídeo Real da Câmera / Tela */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted={isMuted}
+            className={`absolute inset-0 h-full w-full object-cover z-0 ${
+              isCameraActive || isScreenSharing ? "block" : "hidden"
+            } ${facingMode === "user" && !isScreenSharing ? "-scale-x-100" : ""}`}
+          />
+
+          {/* Standby / Card de Demonstração quando câmera e tela estão desligadas */}
+          {!(isCameraActive || isScreenSharing) && (
+            <div className="absolute inset-0 bg-gradient-to-tr from-black via-zinc-950 to-neutral-900 flex items-center justify-center p-6">
+              <div className="relative text-center max-w-md mx-auto">
+                <div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-tr from-neon-cyan/20 to-neon-purple/20 border border-white/10 text-neon-cyan shadow-[0_0_30px_rgba(0,240,255,0.2)]">
+                  <Video className="h-10 w-10 animate-pulse" />
+                </div>
+                <h3 className="font-display text-xl font-black text-white">Transmissão em Alta Definição</h3>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                  Apresentação ao vivo de softwares, ferramentas com IA e catálogo completo da Minha Vitrine.
+                </p>
+
+                {/* Botões rápidos de início imediato no player */}
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    onClick={() => startCamera(facingMode)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-neon-green px-4 py-2.5 text-xs font-black text-background hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(0,255,102,0.4)]"
+                  >
+                    <Video className="h-4 w-4" /> Ligar Minha Câmera & Mic
+                  </button>
+                  <button
+                    onClick={toggleScreenShare}
+                    className="inline-flex items-center gap-2 rounded-xl border border-neon-cyan/50 bg-neon-cyan/10 px-4 py-2.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
+                  >
+                    <Laptop className="h-4 w-4" /> Transmitir Tela do PC
+                  </button>
+                </div>
               </div>
-              <h3 className="font-display text-xl font-black text-white">Transmissão em Alta Definição</h3>
-              <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
-                Apresentação ao vivo de softwares, ferramentas com IA e catálogo completo da Minha Vitrine.
-              </p>
             </div>
-          </div>
+          )}
 
           {/* Reações Flutuantes (Partículas Subindo na Tela) */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden z-10">
             {reactions.map((r) => (
               <div
                 key={r.id}
@@ -207,20 +500,85 @@ function LiveShoppingPage() {
           </div>
 
           {/* Top Overlay no Player */}
-          <div className="relative z-10 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="relative z-20 p-4 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/30 to-transparent">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="flex items-center gap-1.5 rounded-full bg-red-600/90 backdrop-blur px-3 py-1 text-xs font-black text-white shadow-lg">
                 <span className="h-2 w-2 rounded-full bg-white animate-ping" /> AO VIVO
               </span>
               <span className="rounded-full bg-black/60 backdrop-blur px-3 py-1 text-xs font-semibold text-white border border-white/10 flex items-center gap-1.5">
                 <Eye className="h-3.5 w-3.5 text-neon-cyan" /> {session.viewersCount}
               </span>
+              {isCameraActive && (
+                <span className="rounded-full bg-neon-green/20 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-neon-green border border-neon-green/30 flex items-center gap-1">
+                  <Video className="h-3 w-3" /> Câmera ON
+                </span>
+              )}
+              {isScreenSharing && (
+                <span className="rounded-full bg-neon-yellow/20 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-neon-yellow border border-neon-yellow/30 flex items-center gap-1">
+                  <Laptop className="h-3 w-3" /> Tela ON
+                </span>
+              )}
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Controles de visualização no canto superior direito do player */}
+            <div className="flex items-center gap-1.5">
+              {/* Botão de Câmera Rápido no Player */}
+              <button
+                onClick={toggleCamera}
+                className={`grid h-8 w-8 place-items-center rounded-full backdrop-blur border transition-colors ${
+                  isCameraActive
+                    ? "bg-neon-green/20 text-neon-green border-neon-green/40 hover:bg-neon-green/30"
+                    : "bg-black/60 text-white/80 border-white/15 hover:bg-black/80"
+                }`}
+                title={isCameraActive ? "Desligar câmera" : "Ligar câmera"}
+              >
+                {isCameraActive ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+              </button>
+
+              {/* Botão de Mic Rápido no Player */}
+              <button
+                onClick={toggleMic}
+                className={`grid h-8 w-8 place-items-center rounded-full backdrop-blur border transition-colors ${
+                  isMicActive
+                    ? "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40 hover:bg-neon-cyan/30"
+                    : "bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30"
+                }`}
+                title={isMicActive ? "Silenciar microfone" : "Ativar microfone"}
+              >
+                {isMicActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+              </button>
+
+              {/* Botão Girar Câmera */}
+              <button
+                onClick={toggleFlipCamera}
+                className="grid h-8 w-8 place-items-center rounded-full bg-black/60 backdrop-blur border border-white/15 text-white/80 hover:bg-black/80 transition-colors"
+                title="Girar câmera"
+              >
+                <RotateCw className="h-4 w-4" />
+              </button>
+
+              {/* Mudo / Volume */}
+              <button
+                onClick={() => setIsMuted(!isMuted)}
+                className="grid h-8 w-8 place-items-center rounded-full bg-black/60 backdrop-blur border border-white/15 text-white/80 hover:bg-black/80 transition-colors"
+                title={isMuted ? "Desmutar som" : "Mutar som"}
+              >
+                {isMuted ? <VolumeX className="h-4 w-4 text-red-400" /> : <Volume2 className="h-4 w-4 text-neon-cyan" />}
+              </button>
+
+              {/* Tela cheia */}
+              <button
+                onClick={toggleFullscreen}
+                className="grid h-8 w-8 place-items-center rounded-full bg-black/60 backdrop-blur border border-white/15 text-white/80 hover:bg-black/80 transition-colors"
+                title="Tela Cheia"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </button>
+
+              {/* Sacola */}
               <button
                 onClick={() => setIsBagOpen(true)}
-                className="relative flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur px-3 py-1.5 text-xs font-bold text-neon-yellow border border-neon-yellow/40 hover:bg-black/80 transition-colors"
+                className="relative flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur px-3 py-1.5 text-xs font-bold text-neon-yellow border border-neon-yellow/40 hover:bg-black/80 transition-colors ml-1"
               >
                 <ShoppingBag className="h-4 w-4" /> Sacola ({session.products.length})
                 <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-neon-magenta animate-ping" />
@@ -304,6 +662,81 @@ function LiveShoppingPage() {
           </div>
         </div>
 
+        {/* Barra Rápida de Controle Abaixo do Player */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-neon-purple/20 text-neon-purple border border-neon-purple/30">
+              <Radio className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-xs font-bold text-foreground">Controles do Transmissor</p>
+              <p className="text-[11px] text-muted-foreground">
+                {isCameraActive
+                  ? "Câmera transmitindo em tempo real"
+                  : isScreenSharing
+                  ? "Compartilhamento de tela em andamento"
+                  : "Câmera e tela pausadas — clique para ligar"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={toggleCamera}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
+                isCameraActive
+                  ? "bg-neon-green/20 text-neon-green border-neon-green/40 hover:bg-neon-green/30"
+                  : "bg-white/5 text-foreground border-white/10 hover:bg-white/10"
+              }`}
+            >
+              {isCameraActive ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+              {isCameraActive ? "Desligar Câmera" : "Ligar Câmera"}
+            </button>
+
+            <button
+              onClick={toggleMic}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
+                isMicActive
+                  ? "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40 hover:bg-neon-cyan/30"
+                  : "bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30"
+              }`}
+            >
+              {isMicActive ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+              {isMicActive ? "Mic Ativo" : "Mic Mudo"}
+            </button>
+
+            <button
+              onClick={toggleFlipCamera}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold bg-white/5 text-foreground border border-white/10 hover:bg-white/10 transition-colors"
+              title="Girar câmera"
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+              <span>Girar</span>
+            </button>
+
+            <button
+              onClick={toggleScreenShare}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
+                isScreenSharing
+                  ? "bg-neon-yellow/20 text-neon-yellow border-neon-yellow/40 hover:bg-neon-yellow/30"
+                  : "bg-white/5 text-foreground border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <Laptop className="h-3.5 w-3.5" />
+              <span>{isScreenSharing ? "Parar Tela" : "Tela"}</span>
+            </button>
+
+            <button
+              onClick={() => setIsStudioOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-neon-purple/20 text-neon-purple border border-neon-purple/40 hover:bg-neon-purple/30 transition-colors"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              <span>Fixar Ofertas</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
         {/* CHAT AO VIVO INTERATIVO (4 Colunas) */}
         <div className="rounded-3xl border border-white/10 glass p-5 flex flex-col justify-between h-[520px] lg:col-span-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -376,6 +809,160 @@ function LiveShoppingPage() {
           </form>
         </div>
       </div>
+
+      {/* MODAL / DRAWER: ESTÚDIO DO APRESENTADOR (FIXAR PRODUTOS & OFERTA RELÂMPAGO) */}
+      {isStudioOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-up">
+          <div className="h-full max-h-[90vh] w-full max-w-xl rounded-3xl border border-white/15 bg-card p-6 shadow-2xl flex flex-col justify-between overflow-hidden">
+            <div>
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-neon-purple/20 text-neon-purple">
+                    <Radio className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg font-bold text-foreground">Estúdio de Apresentação</h3>
+                    <p className="text-xs text-muted-foreground">Fixe ofertas e produtos na transmissão ao vivo</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsStudioOpen(false)}
+                  className="rounded-full p-2 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Controles de Câmera e Microfone no Modal */}
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Dispositivos de Transmissão</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    onClick={toggleCamera}
+                    className={`rounded-xl p-2.5 text-xs font-bold border flex flex-col items-center gap-1.5 transition-colors ${
+                      isCameraActive
+                        ? "bg-neon-green/20 text-neon-green border-neon-green/40"
+                        : "bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10"
+                    }`}
+                  >
+                    {isCameraActive ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+                    <span>{isCameraActive ? "Câmera Ligada" : "Ligar Câmera"}</span>
+                  </button>
+
+                  <button
+                    onClick={toggleMic}
+                    className={`rounded-xl p-2.5 text-xs font-bold border flex flex-col items-center gap-1.5 transition-colors ${
+                      isMicActive
+                        ? "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40"
+                        : "bg-red-500/20 text-red-400 border-red-500/40"
+                    }`}
+                  >
+                    {isMicActive ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                    <span>{isMicActive ? "Mic Ativo" : "Mic Mudo"}</span>
+                  </button>
+
+                  <button
+                    onClick={toggleFlipCamera}
+                    className="rounded-xl p-2.5 text-xs font-bold border bg-white/5 text-foreground border-white/10 hover:bg-white/10 flex flex-col items-center gap-1.5 transition-colors"
+                  >
+                    <RotateCw className="h-4 w-4" />
+                    <span>Girar Câmera</span>
+                  </button>
+
+                  <button
+                    onClick={toggleScreenShare}
+                    className={`rounded-xl p-2.5 text-xs font-bold border flex flex-col items-center gap-1.5 transition-colors ${
+                      isScreenSharing
+                        ? "bg-neon-yellow/20 text-neon-yellow border-neon-yellow/40"
+                        : "bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10"
+                    }`}
+                  >
+                    <Laptop className="h-4 w-4" />
+                    <span>{isScreenSharing ? "Parar Tela" : "Transmitir Tela"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Botão de Disparo da Oferta Relâmpago */}
+              <div className="mt-4 rounded-2xl border border-neon-magenta/30 bg-neon-magenta/10 p-4 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-neon-magenta flex items-center gap-1.5">
+                    <Flame className="h-4 w-4 animate-bounce" /> Oferta Relâmpago (Cronômetro)
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {session.flashOffer?.active
+                      ? `Ativa agora! Encerra em ${timeLeft}`
+                      : "Destaque um cronômetro de 10 min com cupom exclusivo"}
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleFlashOffer}
+                  className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-colors ${
+                    session.flashOffer?.active
+                      ? "bg-red-600 text-white hover:bg-red-700"
+                      : "bg-neon-magenta text-white hover:opacity-90 shadow-[0_0_15px_rgba(255,0,128,0.4)]"
+                  }`}
+                >
+                  {session.flashOffer?.active ? "Pausar Oferta" : "Iniciar Oferta"}
+                </button>
+              </div>
+
+              {/* Produtos para Fixar na Tela */}
+              <div className="mt-4">
+                <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">
+                  Escolha o Produto para Fixar no Vídeo:
+                </h4>
+                <div className="space-y-2.5 max-h-[35vh] overflow-y-auto pr-1">
+                  {session.products.map((prod) => {
+                    const isPinned = session.pinnedProduct?.id === prod.id;
+                    return (
+                      <div
+                        key={prod.id}
+                        className={`rounded-2xl border p-3 flex items-center justify-between gap-3 transition-colors ${
+                          isPinned
+                            ? "border-neon-cyan bg-neon-cyan/10"
+                            : "border-white/10 bg-white/5 hover:border-white/20"
+                        }`}
+                      >
+                        <img src={prod.image} alt={prod.title} className="h-12 w-12 rounded-xl object-cover border border-white/10" />
+                        <div className="min-w-0 flex-1">
+                          <h5 className="truncate text-xs font-bold text-foreground">{prod.title}</h5>
+                          <span className="text-xs font-black text-neon-green">{formatBRL(prod.price)}</span>
+                        </div>
+                        <button
+                          onClick={() => handlePinProduct(prod)}
+                          className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-colors flex items-center gap-1 ${
+                            isPinned
+                              ? "bg-neon-cyan text-background font-black"
+                              : "border border-white/15 bg-white/5 text-foreground hover:bg-white/10"
+                          }`}
+                        >
+                          <Pin className="h-3.5 w-3.5" /> {isPinned ? "Fixado na Tela" : "Fixar no Vídeo"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+              <Link
+                to="/admin/live"
+                className="text-xs text-neon-purple hover:underline flex items-center gap-1"
+              >
+                Abrir Painel Admin Completo <ChevronRight className="h-3 w-3" />
+              </Link>
+              <button
+                onClick={() => setIsStudioOpen(false)}
+                className="rounded-xl bg-neon-cyan px-4 py-2 text-xs font-bold text-background hover:opacity-90"
+              >
+                Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL / DRAWER: SACOLA DA LIVE */}
       {isBagOpen && (
