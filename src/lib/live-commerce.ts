@@ -36,6 +36,25 @@ export interface LiveFlashOffer {
   couponCode: string;
 }
 
+export interface LiveCartItem {
+  id: string; // product id
+  product: LiveProductItem;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface LiveOrder {
+  id: string;
+  customerName: string;
+  customerPhone?: string;
+  items: LiveCartItem[];
+  totalAmount: number;
+  paymentMethod: "pix" | "card" | "whatsapp";
+  status: "paid" | "pending" | "processing";
+  createdAt: number;
+  formattedTime: string;
+}
+
 export interface LiveSession {
   id: string;
   title: string;
@@ -205,7 +224,72 @@ export const INITIAL_CHAT_MESSAGES: LiveChatMessage[] = [
   },
 ];
 
+export const INITIAL_LIVE_ORDERS: LiveOrder[] = [
+  {
+    id: "PED-8041",
+    customerName: "Pastor Marcos Ribeiro",
+    customerPhone: "(11) 98765-4321",
+    items: [
+      {
+        id: "apostlo-ai",
+        product: INITIAL_LIVE_SESSIONS[0].products[0],
+        quantity: 1,
+        unitPrice: 150.0,
+      },
+    ],
+    totalAmount: 150.0,
+    paymentMethod: "pix",
+    status: "paid",
+    createdAt: Date.now() - 1000 * 60 * 12,
+    formattedTime: "Há 12 min",
+  },
+  {
+    id: "PED-8042",
+    customerName: "Juliana Mendes",
+    customerPhone: "(21) 99123-5588",
+    items: [
+      {
+        id: "apostlo-ai",
+        product: INITIAL_LIVE_SESSIONS[0].products[0],
+        quantity: 1,
+        unitPrice: 150.0,
+      },
+      {
+        id: "neon-runner-x9",
+        product: INITIAL_LIVE_SESSIONS[0].products[1],
+        quantity: 1,
+        unitPrice: 899.0,
+      },
+    ],
+    totalAmount: 1049.0,
+    paymentMethod: "card",
+    status: "paid",
+    createdAt: Date.now() - 1000 * 60 * 5,
+    formattedTime: "Há 5 min",
+  },
+  {
+    id: "PED-8043",
+    customerName: "Carlos Eduardo",
+    customerPhone: "(31) 98432-1100",
+    items: [
+      {
+        id: "aura-wave-pro",
+        product: INITIAL_LIVE_SESSIONS[0].products[2],
+        quantity: 1,
+        unitPrice: 1499.0,
+      },
+    ],
+    totalAmount: 1499.0,
+    paymentMethod: "pix",
+    status: "pending",
+    createdAt: Date.now() - 1000 * 60 * 2,
+    formattedTime: "Há 2 min",
+  },
+];
+
 const STORAGE_KEY_LIVE = "mv_live_session_current";
+const STORAGE_KEY_LIVE_ORDERS = "mv_live_orders_list";
+const STORAGE_KEY_LIVE_CART = "mv_live_cart_items";
 
 export function loadLiveSession(): LiveSession {
   if (typeof window === "undefined") return INITIAL_LIVE_SESSIONS[0];
@@ -226,6 +310,48 @@ export function saveLiveSession(session: LiveSession): void {
     window.dispatchEvent(new CustomEvent("mv_live_update", { detail: session }));
   } catch (e) {
     console.error("Erro ao salvar live:", e);
+  }
+}
+
+export function loadLiveOrders(): LiveOrder[] {
+  if (typeof window === "undefined") return INITIAL_LIVE_ORDERS;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LIVE_ORDERS);
+    if (!raw) return INITIAL_LIVE_ORDERS;
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_LIVE_ORDERS;
+  }
+}
+
+export function saveLiveOrders(orders: LiveOrder[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY_LIVE_ORDERS, JSON.stringify(orders));
+    window.dispatchEvent(new CustomEvent("mv_live_orders_update", { detail: orders }));
+  } catch (e) {
+    console.error("Erro ao salvar pedidos da live:", e);
+  }
+}
+
+export function loadLiveCart(): LiveCartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LIVE_CART);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function saveLiveCart(cart: LiveCartItem[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY_LIVE_CART, JSON.stringify(cart));
+    window.dispatchEvent(new CustomEvent("mv_live_cart_update", { detail: cart }));
+  } catch (e) {
+    console.error("Erro ao salvar carrinho da live:", e);
   }
 }
 
