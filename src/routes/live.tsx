@@ -44,8 +44,13 @@ import {
   Bell,
   Package,
   GripHorizontal,
+  ShieldAlert,
+  Lock,
+  EyeOff,
+  User,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { useAuth } from "@/hooks/use-auth";
 import {
   LiveSession,
   LiveChatMessage,
@@ -94,6 +99,13 @@ function LiveShoppingPage() {
   const [isBagOpen, setIsBagOpen] = useState(false);
   const [checkoutProduct, setCheckoutProduct] = useState<LiveProductItem | null>(null);
   const [timeLeft, setTimeLeft] = useState<string>("05:00");
+
+  // Autenticação e Permissões de Apresentador (Admin / Vendedor da Loja)
+  const { user, isAdmin, loading: authLoading } = useAuth();
+  const isSeller = Boolean(user?.user_metadata?.role === "seller" || user?.user_metadata?.role === "vendedor");
+  const isStoreStaff = !authLoading && Boolean(isAdmin || isSeller);
+  const [viewAsSpectator, setViewAsSpectator] = useState(false);
+  const isPresenter = isStoreStaff && !viewAsSpectator;
 
   // Estados de Carrinho da Live & Controle de Vendas em Tempo Real
   const [cart, setCart] = useState<LiveCartItem[]>(loadLiveCart);
@@ -197,6 +209,10 @@ function LiveShoppingPage() {
   };
 
   const startCamera = async (facing: "user" | "environment" = facingMode) => {
+    if (!isPresenter) {
+      toast.error("A transmissão de câmera é permitida apenas para administradores e vendedores da loja.");
+      return;
+    }
     stopAllTracks();
     try {
       const stream = await startUserMediaStream(undefined, undefined, facing);
@@ -220,6 +236,10 @@ function LiveShoppingPage() {
   };
 
   const toggleCamera = () => {
+    if (!isPresenter) {
+      toast.error("Recurso exclusivo para administradores e vendedores da loja.");
+      return;
+    }
     if (isCameraActive) {
       stopAllTracks();
       setIsCameraActive(false);
@@ -230,6 +250,10 @@ function LiveShoppingPage() {
   };
 
   const toggleMic = () => {
+    if (!isPresenter) {
+      toast.error("Recurso exclusivo para o apresentador da live.");
+      return;
+    }
     const nextState = !isMicActive;
     setIsMicActive(nextState);
     if (mediaStreamRef.current) {
@@ -243,6 +267,7 @@ function LiveShoppingPage() {
   };
 
   const toggleFlipCamera = () => {
+    if (!isPresenter) return;
     const nextFacing = facingMode === "user" ? "environment" : "user";
     setFacingMode(nextFacing);
     if (isCameraActive) {
@@ -253,6 +278,10 @@ function LiveShoppingPage() {
   };
 
   const toggleScreenShare = async () => {
+    if (!isPresenter) {
+      toast.error("O compartilhamento de tela é exclusivo para apresentadores da loja.");
+      return;
+    }
     if (isScreenSharing) {
       stopAllTracks();
       setIsScreenSharing(false);
@@ -545,6 +574,70 @@ function LiveShoppingPage() {
 
   return (
     <AppShell>
+      {/* Barra de Status e Permissão do Apresentador da Loja (Visível apenas para Admin e Vendedor) */}
+      {isStoreStaff && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neon-cyan/40 bg-neon-cyan/10 p-3 shadow-sm backdrop-blur-sm animate-fade-up">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-neon-cyan/20 text-neon-cyan text-sm">
+              🎙️
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-foreground">
+                  {viewAsSpectator
+                    ? "Modo Simulação: Visão do Cliente / Espectador"
+                    : "Acesso Autorizado: Apresentador / Lojista"}
+                </p>
+                <span className="rounded-full bg-neon-cyan/20 border border-neon-cyan/40 px-2 py-0.5 text-[10px] font-bold text-neon-cyan">
+                  {isAdmin ? "Admin da Loja" : "Vendedor Autorizado"}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {viewAsSpectator
+                  ? "Você está testando a live como um comprador comum (sem ferramentas de emissão de vídeo ou estúdio de vendas visíveis)."
+                  : "Você tem acesso total para transmitir via câmera/tela, fixar ofertas e gerenciar pedidos ao vivo."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const nextState = !viewAsSpectator;
+                setViewAsSpectator(nextState);
+                toast.info(
+                  nextState
+                    ? "Modo cliente ativado: ferramentas de transmissão ocultadas para teste."
+                    : "Modo apresentador ativado: controles da live restaurados."
+                );
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-foreground hover:bg-white/20 transition-colors"
+              title={viewAsSpectator ? "Voltar a ver os controles do apresentador" : "Simular como os clientes veem a live"}
+            >
+              {viewAsSpectator ? (
+                <>
+                  <Radio className="h-3.5 w-3.5 text-neon-cyan animate-pulse" />
+                  <span>Ativar Modo Apresentador</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3.5 w-3.5 text-neon-yellow" />
+                  <span>Simular Visão do Cliente</span>
+                </>
+              )}
+            </button>
+            <Link
+              to="/admin/live"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-neon-purple/40 bg-neon-purple/20 px-3 py-1.5 text-xs font-bold text-neon-purple hover:bg-neon-purple/30 transition-colors"
+              title="Abrir o Estúdio de Transmissão Dedicado"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Estúdio Master</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Cabeçalho da Página Live */}
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -555,6 +648,17 @@ function LiveShoppingPage() {
             <span className="text-xs text-muted-foreground">
               {session.viewersCount} pessoas assistindo agora
             </span>
+            {isPresenter ? (
+              <span className="flex items-center gap-1 rounded-full bg-neon-cyan/20 border border-neon-cyan/40 px-2.5 py-0.5 text-[11px] font-bold text-neon-cyan">
+                <Radio className="h-3 w-3 text-neon-cyan animate-pulse" />
+                Apresentador da Loja
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                <Eye className="h-3 w-3 text-neon-cyan" />
+                Espectador
+              </span>
+            )}
             {(isCameraActive || isScreenSharing) && (
               <span className="flex items-center gap-1 rounded-full bg-neon-green/20 border border-neon-green/40 px-2.5 py-0.5 text-[11px] font-bold text-neon-green">
                 <span className="h-1.5 w-1.5 rounded-full bg-neon-green animate-pulse" />
@@ -568,92 +672,96 @@ function LiveShoppingPage() {
           <p className="text-xs sm:text-sm text-muted-foreground">{session.subtitle}</p>
         </div>
 
-        {/* MENU COMPLETO DE CONTROLES: CÂMERA, MICROFONE, GIRAR, TELA E APRESENTADOR */}
+        {/* MENU DE AÇÕES: CONTROLES DE TRANSMISSÃO (APENAS APRESENTADOR) & COMPRA (TODOS) */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Botão Câmera */}
-          <button
-            onClick={toggleCamera}
-            className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-all shadow-sm ${
-              isCameraActive
-                ? "border-neon-green/50 bg-neon-green/20 text-neon-green shadow-[0_0_15px_rgba(0,255,102,0.25)] hover:bg-neon-green/30"
-                : "border-white/10 bg-white/5 text-foreground hover:bg-white/10 hover:border-white/20"
-            }`}
-            title="Ligar ou desligar câmera"
-          >
-            {isCameraActive ? (
-              <>
-                <Video className="h-4 w-4 text-neon-green animate-pulse" />
-                <span>Câmera Ligada</span>
-              </>
-            ) : (
-              <>
-                <VideoOff className="h-4 w-4 text-muted-foreground" />
-                <span>Ligar Câmera</span>
-              </>
-            )}
-          </button>
+          {isPresenter && (
+            <>
+              {/* Botão Câmera (Lojista / Apresentador) */}
+              <button
+                onClick={toggleCamera}
+                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all shadow-sm ${
+                  isCameraActive
+                    ? "border-neon-green/50 bg-neon-green/20 text-neon-green shadow-[0_0_15px_rgba(0,255,102,0.25)] hover:bg-neon-green/30"
+                    : "border-white/10 bg-white/5 text-foreground hover:bg-white/10 hover:border-white/20"
+                }`}
+                title="Ligar ou desligar câmera"
+              >
+                {isCameraActive ? (
+                  <>
+                    <Video className="h-4 w-4 text-neon-green animate-pulse" />
+                    <span className="hidden sm:inline">Câmera Ligada</span>
+                  </>
+                ) : (
+                  <>
+                    <VideoOff className="h-4 w-4 text-muted-foreground" />
+                    <span className="hidden sm:inline">Ligar Câmera</span>
+                  </>
+                )}
+              </button>
 
-          {/* Botão Microfone */}
-          <button
-            onClick={toggleMic}
-            className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-all shadow-sm ${
-              isMicActive
-                ? "border-neon-cyan/50 bg-neon-cyan/20 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.25)] hover:bg-neon-cyan/30"
-                : "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-            }`}
-            title="Ativar ou silenciar microfone"
-          >
-            {isMicActive ? (
-              <>
-                <Mic className="h-4 w-4 text-neon-cyan" />
-                <span>Mic Ativo</span>
-              </>
-            ) : (
-              <>
-                <MicOff className="h-4 w-4 text-red-400" />
-                <span>Mic Mudo</span>
-              </>
-            )}
-          </button>
+              {/* Botão Microfone (Lojista / Apresentador) */}
+              <button
+                onClick={toggleMic}
+                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all shadow-sm ${
+                  isMicActive
+                    ? "border-neon-cyan/50 bg-neon-cyan/20 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.25)] hover:bg-neon-cyan/30"
+                    : "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                }`}
+                title="Ativar ou silenciar microfone"
+              >
+                {isMicActive ? (
+                  <>
+                    <Mic className="h-4 w-4 text-neon-cyan" />
+                    <span className="hidden sm:inline">Mic Ativo</span>
+                  </>
+                ) : (
+                  <>
+                    <MicOff className="h-4 w-4 text-red-400" />
+                    <span className="hidden sm:inline">Mic Mudo</span>
+                  </>
+                )}
+              </button>
 
-          {/* Botão Girar Câmera (Frontal / Traseira) */}
-          <button
-            onClick={toggleFlipCamera}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-white/10 transition-colors"
-            title="Girar câmera (Frontal / Traseira)"
-          >
-            <RotateCw className="h-4 w-4 text-muted-foreground" />
-            <span className="hidden sm:inline">Girar Câmera</span>
-          </button>
+              {/* Botão Girar Câmera */}
+              <button
+                onClick={toggleFlipCamera}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-white/10 transition-colors"
+                title="Girar câmera (Frontal / Traseira)"
+              >
+                <RotateCw className="h-4 w-4 text-muted-foreground" />
+                <span className="hidden md:inline">Girar</span>
+              </button>
 
-          {/* Botão Transmitir Tela */}
-          <button
-            onClick={toggleScreenShare}
-            className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-all ${
-              isScreenSharing
-                ? "border-neon-yellow/50 bg-neon-yellow/20 text-neon-yellow shadow-[0_0_15px_rgba(255,230,0,0.25)]"
-                : "border-white/10 bg-white/5 text-foreground hover:bg-white/10"
-            }`}
-            title="Transmitir tela do computador"
-          >
-            <Laptop className="h-4 w-4" />
-            <span className="hidden sm:inline">{isScreenSharing ? "Parar Tela" : "Transmitir Tela"}</span>
-          </button>
+              {/* Botão Transmitir Tela */}
+              <button
+                onClick={toggleScreenShare}
+                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+                  isScreenSharing
+                    ? "border-neon-yellow/50 bg-neon-yellow/20 text-neon-yellow shadow-[0_0_15px_rgba(255,230,0,0.25)]"
+                    : "border-white/10 bg-white/5 text-foreground hover:bg-white/10"
+                }`}
+                title="Transmitir tela do computador"
+              >
+                <Laptop className="h-4 w-4" />
+                <span className="hidden sm:inline">{isScreenSharing ? "Parar Tela" : "Tela"}</span>
+              </button>
 
-          {/* Botão Abrir Painel / Estúdio do Apresentador */}
-          <button
-            onClick={() => setIsStudioOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-neon-purple/40 bg-neon-purple/10 px-3.5 py-2.5 text-xs font-bold text-neon-purple hover:bg-neon-purple/20 transition-colors"
-            title="Abrir ferramentas de apresentação e fixar ofertas"
-          >
-            <Radio className="h-4 w-4" />
-            <span>Estúdio da Live</span>
-          </button>
+              {/* Botão Abrir Painel / Estúdio do Apresentador */}
+              <button
+                onClick={() => setIsStudioOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-neon-purple/40 bg-neon-purple/10 px-3.5 py-2 text-xs font-bold text-neon-purple hover:bg-neon-purple/20 transition-colors shadow-sm"
+                title="Abrir ferramentas de apresentação e controle de vendas"
+              >
+                <Radio className="h-4 w-4" />
+                <span>Estúdio da Live</span>
+              </button>
+            </>
+          )}
 
-          {/* Botão Carrinho da Live */}
+          {/* Botão Carrinho da Live (Visível para Todos) */}
           <button
             onClick={() => setIsCartOpen(true)}
-            className="relative inline-flex items-center gap-1.5 rounded-xl border border-neon-green/50 bg-neon-green/10 px-3.5 py-2.5 text-xs font-bold text-neon-green hover:bg-neon-green/20 transition-colors shadow-[0_0_15px_rgba(0,255,102,0.2)]"
+            className="relative inline-flex items-center gap-1.5 rounded-xl border border-neon-green/50 bg-neon-green/10 px-3.5 py-2 text-xs font-bold text-neon-green hover:bg-neon-green/20 transition-colors shadow-[0_0_15px_rgba(0,255,102,0.2)]"
             title="Abrir carrinho de compras da live"
           >
             <ShoppingCart className="h-4 w-4" />
@@ -665,7 +773,19 @@ function LiveShoppingPage() {
             )}
           </button>
 
-          {/* Botão Compartilhar */}
+          {/* Botão Sacola de Produtos (Para Espectadores) */}
+          {!isPresenter && (
+            <button
+              onClick={() => setIsBagOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-foreground hover:bg-white/10 transition-colors"
+              title="Ver lista de produtos apresentados"
+            >
+              <ShoppingBag className="h-4 w-4 text-neon-cyan" />
+              <span>Sacola ({session.products.length})</span>
+            </button>
+          )}
+
+          {/* Botão Compartilhar (Para Todos) */}
           <button
             onClick={() => {
               if (navigator.share) {
@@ -675,12 +795,25 @@ function LiveShoppingPage() {
                 toast.success("Link da live copiado!");
               }
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-foreground hover:bg-white/10 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-foreground hover:bg-white/10 transition-colors"
             title="Compartilhar link da transmissão"
           >
             <Share2 className="h-4 w-4" />
             <span className="hidden md:inline">Compartilhar</span>
           </button>
+
+          {/* Link Discreto para Login de Lojistas quando deslogado */}
+          {!isStoreStaff && (
+            <Link
+              to="/auth"
+              search={{ redirect: "/live" }}
+              className="hidden lg:inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-white px-2 py-1 transition-colors"
+              title="Acesso exclusivo para administradores e vendedores da vitrine"
+            >
+              <Lock className="h-3 w-3" />
+              <span>Sou Lojista</span>
+            </Link>
+          )}
         </div>
       </header>
 
@@ -707,29 +840,64 @@ function LiveShoppingPage() {
           {/* Standby / Card de Demonstração quando câmera e tela estão desligadas */}
           {!(isCameraActive || isScreenSharing) && (
             <div className="absolute inset-0 bg-gradient-to-tr from-black via-zinc-950 to-neutral-900 flex items-center justify-center p-6">
-              <div className="relative text-center max-w-md mx-auto">
-                <div className="mx-auto mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-tr from-neon-cyan/20 to-neon-purple/20 border border-white/10 text-neon-cyan shadow-[0_0_30px_rgba(0,240,255,0.2)]">
-                  <Video className="h-10 w-10 animate-pulse" />
+              <div className="relative text-center max-w-md mx-auto animate-fade-up">
+                <div className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-tr from-neon-cyan/20 to-neon-purple/20 border border-white/10 text-neon-cyan shadow-[0_0_30px_rgba(0,240,255,0.2)]">
+                  {isPresenter ? (
+                    <Video className="h-8 w-8 text-neon-green animate-pulse" />
+                  ) : (
+                    <Radio className="h-8 w-8 text-red-500 animate-pulse" />
+                  )}
                 </div>
-                <h3 className="font-display text-xl font-black text-white">Transmissão em Alta Definição</h3>
+
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold text-foreground mb-2">
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                  {isPresenter
+                    ? "ESTÚDIO DE TRANSMISSÃO PRONTO"
+                    : "SALA AO VIVO ABERTA • AGUARDANDO APRESENTADOR"}
+                </div>
+
+                <h3 className="font-display text-lg font-black text-white sm:text-xl">
+                  {isPresenter ? "Iniciar Sua Transmissão Ao Vivo" : "Vitrine Ao Vivo — Demonstrações & Ofertas"}
+                </h3>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Apresentação ao vivo de softwares, ferramentas com IA e catálogo completo da Minha Vitrine.
+                  {isPresenter
+                    ? "Você está logado como lojista/apresentador. Ligue sua webcam ou transmita sua tela para começar a apresentar aos espectadores."
+                    : "O apresentador entrará ao vivo em instantes. Aproveite para conferir as ofertas relâmpago, a sacola de produtos e participar do chat!"}
                 </p>
 
-                {/* Botões rápidos de início imediato no player */}
+                {/* Botões rápidos: Início para Apresentador vs Exploração para Espectador */}
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    onClick={() => startCamera(facingMode)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-neon-green px-4 py-2.5 text-xs font-black text-background hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(0,255,102,0.4)]"
-                  >
-                    <Video className="h-4 w-4" /> Ligar Minha Câmera & Mic
-                  </button>
-                  <button
-                    onClick={toggleScreenShare}
-                    className="inline-flex items-center gap-2 rounded-xl border border-neon-cyan/50 bg-neon-cyan/10 px-4 py-2.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
-                  >
-                    <Laptop className="h-4 w-4" /> Transmitir Tela do PC
-                  </button>
+                  {isPresenter ? (
+                    <>
+                      <button
+                        onClick={() => startCamera(facingMode)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-neon-green px-4 py-2.5 text-xs font-black text-background hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(0,255,102,0.4)]"
+                      >
+                        <Video className="h-4 w-4" /> Ligar Câmera & Transmitir
+                      </button>
+                      <button
+                        onClick={toggleScreenShare}
+                        className="inline-flex items-center gap-2 rounded-xl border border-neon-cyan/50 bg-neon-cyan/10 px-4 py-2.5 text-xs font-bold text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
+                      >
+                        <Laptop className="h-4 w-4" /> Transmitir Tela do PC
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setIsBagOpen(true)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-neon-cyan px-4 py-2.5 text-xs font-black text-background hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(0,240,255,0.4)]"
+                      >
+                        <ShoppingBag className="h-4 w-4" /> Ver Sacola de Ofertas
+                      </button>
+                      <button
+                        onClick={() => handleReaction("❤️")}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-neon-magenta/50 bg-neon-magenta/15 px-3.5 py-2.5 text-xs font-bold text-neon-magenta hover:bg-neon-magenta/25 transition-colors shadow-sm"
+                      >
+                        <Heart className="h-4 w-4 fill-neon-magenta" /> Enviar Curtida
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -1007,94 +1175,153 @@ function LiveShoppingPage() {
           </div>
         </div>
 
-        {/* Barra Rápida de Controle Abaixo do Player */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-neon-purple/20 text-neon-purple border border-neon-purple/30">
-              <Radio className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-xs font-bold text-foreground">Controles do Transmissor</p>
-              <p className="text-[11px] text-muted-foreground">
-                {isCameraActive
-                  ? "Câmera transmitindo em tempo real"
-                  : isScreenSharing
-                  ? "Compartilhamento de tela em andamento"
-                  : "Câmera e tela pausadas — clique para ligar"}
-              </p>
+        {/* Barra Rápida Abaixo do Player: Controles do Transmissor (Apresentador) vs Engajamento & Compra (Espectador) */}
+        {isPresenter ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neon-purple/30 bg-neon-purple/5 p-3.5 backdrop-blur-sm animate-fade-up">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-neon-purple/20 text-neon-purple border border-neon-purple/30">
+                <Radio className="h-4 w-4 text-neon-purple animate-pulse" />
+              </span>
+              <div>
+                <p className="text-xs font-bold text-foreground">Controles do Transmissor (Lojista)</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {isCameraActive
+                    ? "Câmera transmitindo em tempo real"
+                    : isScreenSharing
+                    ? "Compartilhamento de tela em andamento"
+                    : "Câmera e tela pausadas — clique para ligar"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={toggleCamera}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
+                  isCameraActive
+                    ? "bg-neon-green/20 text-neon-green border-neon-green/40 hover:bg-neon-green/30"
+                    : "bg-white/5 text-foreground border-white/10 hover:bg-white/10"
+                }`}
+              >
+                {isCameraActive ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+                {isCameraActive ? "Desligar Câmera" : "Ligar Câmera"}
+              </button>
+
+              <button
+                onClick={toggleMic}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
+                  isMicActive
+                    ? "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40 hover:bg-neon-cyan/30"
+                    : "bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30"
+                }`}
+              >
+                {isMicActive ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+                {isMicActive ? "Mic Ativo" : "Mic Mudo"}
+              </button>
+
+              <button
+                onClick={toggleFlipCamera}
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold bg-white/5 text-foreground border border-white/10 hover:bg-white/10 transition-colors"
+                title="Girar câmera"
+              >
+                <RotateCw className="h-3.5 w-3.5" />
+                <span>Girar</span>
+              </button>
+
+              <button
+                onClick={toggleScreenShare}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
+                  isScreenSharing
+                    ? "bg-neon-yellow/20 text-neon-yellow border-neon-yellow/40 hover:bg-neon-yellow/30"
+                    : "bg-white/5 text-foreground border-white/10 hover:bg-white/10"
+                }`}
+              >
+                <Laptop className="h-3.5 w-3.5" />
+                <span>{isScreenSharing ? "Parar Tela" : "Tela"}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setStudioTab("sales");
+                  setIsStudioOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-neon-green/20 text-neon-green border border-neon-green/40 hover:bg-neon-green/30 transition-colors shadow-[0_0_12px_rgba(0,255,102,0.2)]"
+                title="Abrir painel de vendas e pedidos ao vivo"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span>Vendas ({formatBRL(totalSalesRevenue)})</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setStudioTab("products");
+                  setIsStudioOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-neon-purple/20 text-neon-purple border border-neon-purple/40 hover:bg-neon-purple/30 transition-colors"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                <span>Fixar Ofertas</span>
+              </button>
+
+              <Link
+                to="/admin/live"
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-white border border-white/10 hover:bg-white/5 transition-colors"
+                title="Ir para o Estúdio Master Completo"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span>Estúdio Master</span>
+              </Link>
             </div>
           </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-sm animate-fade-up">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-xs font-bold text-foreground">Interação & Compras na Live</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Aproveite descontos exclusivos durante a transmissão e tire dúvidas pelo chat
+                </p>
+              </div>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={toggleCamera}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
-                isCameraActive
-                  ? "bg-neon-green/20 text-neon-green border-neon-green/40 hover:bg-neon-green/30"
-                  : "bg-white/5 text-foreground border-white/10 hover:bg-white/10"
-              }`}
-            >
-              {isCameraActive ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
-              {isCameraActive ? "Desligar Câmera" : "Ligar Câmera"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => handleReaction("❤️")}
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-neon-magenta/15 text-neon-magenta border border-neon-magenta/30 hover:bg-neon-magenta/25 transition-all shadow-sm"
+              >
+                <Heart className="h-3.5 w-3.5 fill-neon-magenta" />
+                <span>Curtir</span>
+              </button>
 
-            <button
-              onClick={toggleMic}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
-                isMicActive
-                  ? "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40 hover:bg-neon-cyan/30"
-                  : "bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30"
-              }`}
-            >
-              {isMicActive ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
-              {isMicActive ? "Mic Ativo" : "Mic Mudo"}
-            </button>
+              <button
+                onClick={() => handleReaction("🔥")}
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-orange-500/15 text-orange-400 border border-orange-500/30 hover:bg-orange-500/25 transition-all shadow-sm"
+              >
+                <Flame className="h-3.5 w-3.5 fill-orange-400" />
+                <span>Fogo</span>
+              </button>
 
-            <button
-              onClick={toggleFlipCamera}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold bg-white/5 text-foreground border border-white/10 hover:bg-white/10 transition-colors"
-              title="Girar câmera"
-            >
-              <RotateCw className="h-3.5 w-3.5" />
-              <span>Girar</span>
-            </button>
+              <button
+                onClick={() => setIsBagOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-white/5 text-foreground border border-white/10 hover:bg-white/10 transition-colors"
+              >
+                <ShoppingBag className="h-3.5 w-3.5 text-neon-cyan" />
+                <span>Sacola ({session.products.length})</span>
+              </button>
 
-            <button
-              onClick={toggleScreenShare}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
-                isScreenSharing
-                  ? "bg-neon-yellow/20 text-neon-yellow border-neon-yellow/40 hover:bg-neon-yellow/30"
-                  : "bg-white/5 text-foreground border-white/10 hover:bg-white/10"
-              }`}
-            >
-              <Laptop className="h-3.5 w-3.5" />
-              <span>{isScreenSharing ? "Parar Tela" : "Tela"}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setStudioTab("sales");
-                setIsStudioOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-neon-green/20 text-neon-green border border-neon-green/40 hover:bg-neon-green/30 transition-colors shadow-[0_0_12px_rgba(0,255,102,0.2)]"
-              title="Abrir painel de vendas e pedidos ao vivo"
-            >
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span>Vendas ({formatBRL(totalSalesRevenue)})</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setStudioTab("products");
-                setIsStudioOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-neon-purple/20 text-neon-purple border border-neon-purple/40 hover:bg-neon-purple/30 transition-colors"
-            >
-              <Settings className="h-3.5 w-3.5" />
-              <span>Fixar Ofertas</span>
-            </button>
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold bg-neon-green/20 text-neon-green border border-neon-green/40 hover:bg-neon-green/30 transition-colors shadow-[0_0_12px_rgba(0,255,102,0.2)]"
+              >
+                <ShoppingCart className="h-3.5 w-3.5" />
+                <span>Meu Carrinho {cartItemsCount > 0 && `(${cartItemsCount})`}</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
         {/* CHAT AO VIVO INTERATIVO (4 Colunas) */}
@@ -1173,7 +1400,33 @@ function LiveShoppingPage() {
       {/* MODAL / DRAWER: ESTÚDIO DO APRESENTADOR & PAINEL DE VENDAS AO VIVO */}
       {isStudioOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-up">
-          <div className="h-full max-h-[92vh] w-full max-w-2xl rounded-3xl border border-white/15 bg-card p-6 shadow-2xl flex flex-col justify-between overflow-hidden">
+          {!isStoreStaff ? (
+            <div className="w-full max-w-md rounded-3xl border border-red-500/30 bg-card p-6 shadow-2xl text-center">
+              <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 shadow-[0_0_20px_rgba(255,0,0,0.2)]">
+                <ShieldAlert className="h-8 w-8" />
+              </div>
+              <h3 className="font-display text-lg font-bold text-foreground">Área Restrita aos Lojistas</h3>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                O Estúdio de Transmissão e o Painel de Vendas em tempo real são exclusivos para administradores e vendedores da loja.
+              </p>
+              <div className="mt-6 flex flex-col gap-2">
+                <Link
+                  to="/auth"
+                  search={{ redirect: "/live" }}
+                  className="btn-neon w-full !py-2.5 text-xs font-bold"
+                >
+                  Entrar como Administrador / Vendedor
+                </Link>
+                <button
+                  onClick={() => setIsStudioOpen(false)}
+                  className="rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-semibold text-muted-foreground hover:bg-white/10"
+                >
+                  Voltar para a Live
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full max-h-[92vh] w-full max-w-2xl rounded-3xl border border-white/15 bg-card p-6 shadow-2xl flex flex-col justify-between overflow-hidden">
             <div className="flex flex-col min-h-0 flex-1">
               {/* Header do Estúdio */}
               <div className="flex items-center justify-between border-b border-white/10 pb-4 shrink-0">
@@ -1494,6 +1747,7 @@ function LiveShoppingPage() {
               </button>
             </div>
           </div>
+          )}
         </div>
       )}
 
