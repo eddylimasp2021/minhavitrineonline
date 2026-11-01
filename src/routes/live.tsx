@@ -43,6 +43,7 @@ import {
   UserCheck,
   Bell,
   Package,
+  GripHorizontal,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import {
@@ -120,6 +121,61 @@ function LiveShoppingPage() {
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Estados e controle de arrasto (drag) do Banner de Oferta Relâmpago
+  const [isOfferVisible, setIsOfferVisible] = useState(true);
+  const [offerPos, setOfferPos] = useState<{ x: number; y: number } | null>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    elemX: number;
+    elemY: number;
+  }>({ startX: 0, startY: 0, elemX: 0, elemY: 0 });
+
+  const startDrag = (clientX: number, clientY: number) => {
+    if (!bannerRef.current || !playerContainerRef.current) return;
+    const playerRect = playerContainerRef.current.getBoundingClientRect();
+    const bannerRect = bannerRef.current.getBoundingClientRect();
+
+    dragRef.current = {
+      startX: clientX,
+      startY: clientY,
+      elemX: bannerRect.left - playerRect.left,
+      elemY: bannerRect.top - playerRect.top,
+    };
+
+    const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const curX = "touches" in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const curY = "touches" in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+      const dx = curX - dragRef.current.startX;
+      const dy = curY - dragRef.current.startY;
+
+      const pRect = playerContainerRef.current?.getBoundingClientRect();
+      const bRect = bannerRef.current?.getBoundingClientRect();
+      if (!pRect || !bRect) return;
+
+      const maxX = pRect.width - bRect.width;
+      const maxY = pRect.height - bRect.height;
+
+      const nextX = Math.max(8, Math.min(maxX - 8, dragRef.current.elemX + dx));
+      const nextY = Math.max(8, Math.min(maxY - 8, dragRef.current.elemY + dy));
+
+      setOfferPos({ x: nextX, y: nextY });
+    };
+
+    const handleEnd = () => {
+      window.removeEventListener("mousemove", handleMove as any);
+      window.removeEventListener("mouseup", handleEnd);
+      window.removeEventListener("touchmove", handleMove as any);
+      window.removeEventListener("touchend", handleEnd);
+    };
+
+    window.addEventListener("mousemove", handleMove as any);
+    window.addEventListener("mouseup", handleEnd);
+    window.addEventListener("touchmove", handleMove as any, { passive: true });
+    window.addEventListener("touchend", handleEnd);
+  };
 
   // Limpeza de mídia ao desmontar o componente
   useEffect(() => {
@@ -811,74 +867,130 @@ function LiveShoppingPage() {
             </div>
           )}
 
-          {/* Bottom Overlay: Produto Fixado na Tela & Barra de Reações */}
-          <div className="relative z-10 p-4 flex flex-wrap items-end justify-between gap-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-12">
-            {/* CARD DE PRODUTO FIXADO COM 1 CLIQUE */}
-            {session.pinnedProduct && (
-              <div className="w-full max-w-md rounded-2xl border border-neon-cyan/50 bg-black/90 p-3.5 backdrop-blur-md shadow-2xl animate-fade-up">
-                {session.flashOffer?.active && (
-                  <div className="mb-2 flex items-center justify-between rounded-lg bg-neon-magenta/20 border border-neon-magenta/40 px-2.5 py-1 text-[11px] font-bold text-neon-magenta">
-                    <span className="flex items-center gap-1">
-                      <Flame className="h-3.5 w-3.5 animate-bounce" /> OFERTA RELÂMPAGO
-                    </span>
-                    <span className="font-mono flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> Termina em {timeLeft}
-                    </span>
-                  </div>
-                )}
+          {/* CARD DE PRODUTO & OFERTA RELÂMPAGO FLUTUANTE E ARRASTÁVEL (DRAGGABLE) */}
+          {session.pinnedProduct && isOfferVisible && (
+            <div
+              ref={bannerRef}
+              style={
+                offerPos
+                  ? {
+                      position: "absolute",
+                      left: `${offerPos.x}px`,
+                      top: `${offerPos.y}px`,
+                      zIndex: 35,
+                      maxWidth: "min(390px, 92vw)",
+                    }
+                  : {
+                      position: "absolute",
+                      bottom: "16px",
+                      left: "16px",
+                      zIndex: 35,
+                      maxWidth: "min(390px, 92vw)",
+                    }
+              }
+              className="w-full rounded-2xl border border-neon-cyan/50 bg-black/95 p-3.5 backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.85)] animate-fade-up select-none transition-shadow hover:shadow-[0_0_30px_rgba(0,240,255,0.3)] touch-none"
+            >
+              {/* Barra de Arrasto Superior com Grip e Botão de Fechar */}
+              <div
+                onMouseDown={(e) => startDrag(e.clientX, e.clientY)}
+                onTouchStart={(e) => startDrag(e.touches[0].clientX, e.touches[0].clientY)}
+                className="mb-2 flex items-center justify-between pb-1.5 border-b border-white/10 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-white transition-colors"
+                title="Clique e arraste para posicionar a oferta onde preferir na tela"
+              >
+                <div className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider uppercase text-neon-cyan/90">
+                  <GripHorizontal className="h-4 w-4 text-neon-cyan animate-pulse" />
+                  <span>Segure para mover na tela</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOfferVisible(false);
+                    toast.info("Oferta fechada. Clique em 'Ver Oferta' para reabrir.");
+                  }}
+                  className="rounded-full p-1 text-muted-foreground hover:bg-white/10 hover:text-white transition-colors"
+                  title="Fechar banner da oferta"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <img
-                    src={session.pinnedProduct.image}
-                    alt={session.pinnedProduct.title}
-                    className="h-16 w-16 rounded-xl object-cover shrink-0 border border-white/10"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="rounded bg-neon-cyan/20 px-1.5 py-0.5 text-[9px] font-extrabold text-neon-cyan">
-                        DESTAQUE DA LIVE
-                      </span>
-                      {session.pinnedProduct.discountPercentage && (
-                        <span className="rounded bg-neon-green/20 px-1.5 py-0.5 text-[9px] font-extrabold text-neon-green">
-                          -{session.pinnedProduct.discountPercentage}% OFF
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="truncate text-xs sm:text-sm font-bold text-white mt-0.5">
-                      {session.pinnedProduct.title}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm sm:text-base font-black text-neon-green">
-                        {formatBRL(session.pinnedProduct.price)}
-                      </span>
-                      {session.pinnedProduct.originalPrice && (
-                        <span className="text-xs text-muted-foreground line-through">
-                          {formatBRL(session.pinnedProduct.originalPrice)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+              {session.flashOffer?.active && (
+                <div className="mb-2 flex items-center justify-between rounded-lg bg-neon-magenta/20 border border-neon-magenta/40 px-2.5 py-1 text-[11px] font-bold text-neon-magenta">
+                  <span className="flex items-center gap-1">
+                    <Flame className="h-3.5 w-3.5 animate-bounce" /> OFERTA RELÂMPAGO
+                  </span>
+                  <span className="font-mono flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Termina em {timeLeft}
+                  </span>
+                </div>
+              )}
 
-                  <div className="flex flex-col gap-1.5 shrink-0">
-                    <button
-                      onClick={() => handleAddToCart(session.pinnedProduct!)}
-                      className="rounded-xl bg-neon-cyan px-3 py-1.5 text-xs font-black text-background hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(0,240,255,0.3)] flex items-center justify-center gap-1"
-                    >
-                      <ShoppingCart className="h-3.5 w-3.5" /> + Carrinho
-                    </button>
-                    <button
-                      onClick={() => handleDirectBuy(session.pinnedProduct!)}
-                      className="rounded-xl bg-gradient-to-r from-neon-green to-neon-cyan px-3 py-1.5 text-xs font-black text-background hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(0,255,102,0.3)] flex items-center justify-center gap-1"
-                    >
-                      <Zap className="h-3.5 w-3.5" /> Comprar
-                    </button>
+              <div className="flex items-center gap-3">
+                <img
+                  src={session.pinnedProduct.image}
+                  alt={session.pinnedProduct.title}
+                  className="h-16 w-16 rounded-xl object-cover shrink-0 border border-white/10"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded bg-neon-cyan/20 px-1.5 py-0.5 text-[9px] font-extrabold text-neon-cyan">
+                      DESTAQUE DA LIVE
+                    </span>
+                    {session.pinnedProduct.discountPercentage && (
+                      <span className="rounded bg-neon-green/20 px-1.5 py-0.5 text-[9px] font-extrabold text-neon-green">
+                        -{session.pinnedProduct.discountPercentage}% OFF
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="truncate text-xs sm:text-sm font-bold text-white mt-0.5">
+                    {session.pinnedProduct.title}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm sm:text-base font-black text-neon-green">
+                      {formatBRL(session.pinnedProduct.price)}
+                    </span>
+                    {session.pinnedProduct.originalPrice && (
+                      <span className="text-xs text-muted-foreground line-through">
+                        {formatBRL(session.pinnedProduct.originalPrice)}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Barra de Reações Interativas */}
-            <div className="flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur border border-white/15 p-1.5">
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button
+                    onClick={() => handleAddToCart(session.pinnedProduct!)}
+                    className="rounded-xl bg-neon-cyan px-3 py-1.5 text-xs font-black text-background hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(0,240,255,0.3)] flex items-center justify-center gap-1"
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5" /> + Carrinho
+                  </button>
+                  <button
+                    onClick={() => handleDirectBuy(session.pinnedProduct!)}
+                    className="rounded-xl bg-gradient-to-r from-neon-green to-neon-cyan px-3 py-1.5 text-xs font-black text-background hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(0,255,102,0.3)] flex items-center justify-center gap-1"
+                  >
+                    <Zap className="h-3.5 w-3.5" /> Comprar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Botão Miniatura Flutuante para Reabrir a Oferta se tiver sido fechada */}
+          {session.pinnedProduct && !isOfferVisible && (
+            <button
+              onClick={() => setIsOfferVisible(true)}
+              className="absolute bottom-4 left-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-neon-cyan/50 bg-black/85 backdrop-blur px-3.5 py-1.5 text-xs font-bold text-neon-cyan hover:bg-black hover:border-neon-cyan transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)] animate-pulse"
+              title="Reabrir oferta relâmpago fixada"
+            >
+              <Flame className="h-3.5 w-3.5 text-neon-magenta animate-bounce" />
+              <span>Ver Oferta ({formatBRL(session.pinnedProduct.price)})</span>
+            </button>
+          )}
+
+          {/* Bottom Overlay: Barra de Reações Interativas */}
+          <div className="relative z-10 p-4 flex items-end justify-end pointer-events-none bg-gradient-to-t from-black/80 via-black/20 to-transparent pt-12">
+            <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur border border-white/15 p-1.5">
               {["❤️", "🔥", "👏", "🚀", "💎"].map((emoji) => (
                 <button
                   key={emoji}
