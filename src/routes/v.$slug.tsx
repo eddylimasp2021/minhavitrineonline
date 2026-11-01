@@ -14,12 +14,20 @@ import {
   Download,
   Cpu,
   CreditCard,
+  Truck,
+  Package,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
 import { getPublicProductBySlug } from "@/lib/public.functions";
 import { formatBRL, buildWhatsAppUrl, accessLink, isDigitalType, LICENSE_TYPES, WHATSAPP_NUMBER } from "@/lib/mock-data";
+import { formatCep, lookupCep, calculateShippingOptions, ShippingOption, CepAddress } from "@/lib/shipping";
 import { track } from "@/hooks/use-track";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/v/$slug")({
   loader: async ({ params }) => {
@@ -97,13 +105,51 @@ function PublicProduct() {
   const { product: p } = Route.useLoaderData();
   const isDigital = isDigitalType(p.product_type);
 
+  // Estados de cálculo de frete para produtos físicos
+  const [cep, setCep] = useState("");
+  const [isSearchingCep, setIsSearchingCep] = useState(false);
+  const [addressResult, setAddressResult] = useState<CepAddress | null>(null);
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+  const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
+
+  const productPrice = Number(p.price);
+  const finalPrice = selectedShipping ? productPrice + selectedShipping.price : productPrice;
+
+  const handleCalculateShipping = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = cep.replace(/\D/g, "");
+    if (clean.length !== 8) {
+      toast.error("Por favor, digite um CEP válido com 8 dígitos.");
+      return;
+    }
+    setIsSearchingCep(true);
+    try {
+      const addr = await lookupCep(clean);
+      if (addr) {
+        setAddressResult(addr);
+        const options = calculateShippingOptions(addr.uf, productPrice);
+        setShippingOptions(options);
+        setSelectedShipping(options[0]);
+        toast.success(`Frete calculado para ${addr.localidade} - ${addr.uf}!`);
+      } else {
+        toast.error("CEP não localizado. Verifique os números digitados.");
+      }
+    } catch {
+      toast.error("Erro ao consultar CEP. Tente novamente.");
+    } finally {
+      setIsSearchingCep(false);
+    }
+  };
+
   useEffect(() => {
     track("product_view", { product_id: p.id, path: `/v/${p.slug}` });
   }, [p.id, p.slug]);
 
   const waMsg = isDigital
     ? `Olá! Tenho interesse no software *${p.title}* ${p.software_version ? `(${p.software_version})` : ""}. Como faço para efetuar o pagamento e receber o link de acesso?`
-    : `Olá! Vi *${p.title}* (${typeof window !== "undefined" ? window.location.origin : ""}/v/${p.slug}) e quero saber mais.`;
+    : selectedShipping && addressResult
+    ? `Olá! Quero comprar o produto *${p.title}* (${formatBRL(productPrice)}). Calculei o frete para o CEP *${addressResult.cep}* (${addressResult.localidade} - ${addressResult.uf}) via *${selectedShipping.name}* (${formatBRL(selectedShipping.price)} • Prazo: ${selectedShipping.deliveryDaysMin} a ${selectedShipping.deliveryDaysMax} dias úteis). Total com frete: *${formatBRL(finalPrice)}*. Como faço para finalizar o pagamento e envio?`
+    : `Olá! Vi o produto *${p.title}* (${formatBRL(productPrice)}) e gostaria de comprar.`;
 
   const waUrl = buildWhatsAppUrl(p.whatsapp || WHATSAPP_NUMBER, waMsg);
 
@@ -116,7 +162,7 @@ function PublicProduct() {
   const hasExternalUrl = !!(p.external_url && /^https?:\/\//i.test(p.external_url));
   const cardUrl = hasExternalUrl ? p.external_url : null;
   const cardLabel = (p.cta_label && p.cta_label.trim()) || "Pagar com Cartão de Crédito";
-  const cardFallbackMsg = `Olá! Tenho interesse no produto *${p.title}* (${formatBRL(Number(p.price))}). Gostaria de realizar o pagamento via Cartão de Crédito. Pode me enviar o link de checkout?`;
+  const cardFallbackMsg = `Olá! Tenho interesse no produto *${p.title}* (${formatBRL(finalPrice)}). Gostaria de realizar o pagamento via Cartão de Crédito. Pode me enviar o link de checkout?`;
   const cardFallbackUrl = buildWhatsAppUrl(p.whatsapp || WHATSAPP_NUMBER, cardFallbackMsg);
 
   const licenseLabel =
@@ -157,7 +203,7 @@ function PublicProduct() {
           </div>
 
           {/* Selos de Confiança para Software e Produtos */}
-          {isDigital && (
+          {isDigital ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl border border-neon-cyan/20 bg-neon-cyan/5 p-3.5 flex items-start gap-2.5">
                 <Zap className="h-5 w-5 text-neon-cyan shrink-0 mt-0.5" />
@@ -178,6 +224,27 @@ function PublicProduct() {
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-neon-cyan/20 bg-neon-cyan/5 p-3.5 flex items-start gap-2.5">
+                <Truck className="h-5 w-5 text-neon-cyan shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-semibold text-neon-cyan">Envio com Rastreio</h4>
+                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                    Correios (PAC/SEDEX) ou transportadora com código de acompanhamento.
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-neon-green/20 bg-neon-green/5 p-3.5 flex items-start gap-2.5">
+                <Package className="h-5 w-5 text-neon-green shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-semibold text-neon-green">Postagem em 24h</h4>
+                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                    Produto em estoque físico, conferido e despachado rapidamente.
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
@@ -188,9 +255,13 @@ function PublicProduct() {
                 {p.category}
               </span>
             )}
-            {isDigital && (
+            {isDigital ? (
               <span className="inline-block rounded-full border border-neon-cyan/40 bg-neon-cyan/10 px-3 py-1 text-xs font-semibold text-neon-cyan">
                 {p.product_type === "software" ? "Software / Sistema" : p.product_type === "app" ? "Aplicativo" : "Produto Digital"}
+              </span>
+            ) : (
+              <span className="inline-block rounded-full border border-neon-green/40 bg-neon-green/10 px-3 py-1 text-xs font-semibold text-neon-green">
+                Produto Físico • Envio Nacional
               </span>
             )}
           </div>
@@ -198,7 +269,14 @@ function PublicProduct() {
           <h1 className="mt-3 font-display text-3xl font-black sm:text-4xl">{p.title}</h1>
           <p className="mt-4 text-muted-foreground leading-relaxed whitespace-pre-line">{p.description}</p>
           
-          <p className="mt-6 font-display text-4xl font-black text-holo">{formatBRL(Number(p.price))}</p>
+          <div className="mt-6 flex flex-wrap items-baseline gap-3">
+            <p className="font-display text-4xl font-black text-holo">{formatBRL(finalPrice)}</p>
+            {selectedShipping && selectedShipping.price > 0 && (
+              <span className="text-xs text-muted-foreground">
+                ({formatBRL(productPrice)} produto + {formatBRL(selectedShipping.price)} frete {selectedShipping.name})
+              </span>
+            )}
+          </div>
 
           {/* Ficha Técnica de Software */}
           {isDigital && (
@@ -233,6 +311,118 @@ function PublicProduct() {
                 <div className="pt-2 border-t border-white/10 text-xs text-muted-foreground flex items-start gap-1.5">
                   <Cpu className="h-3.5 w-3.5 text-neon-purple shrink-0 mt-0.5" />
                   <span><strong>Requisitos:</strong> {p.system_requirements}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Calculadora de Frete e Prazos de Entrega (Para Produtos Físicos) */}
+          {!isDigital && (
+            <div className="mt-6 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 animate-fade-up">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neon-cyan flex items-center gap-1.5">
+                  <Truck className="h-4 w-4" /> Calcular Frete e Prazos de Entrega
+                </h3>
+                <a
+                  href="https://buscacepinter.correios.com.br/app/cep/index.php"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-muted-foreground hover:text-white underline"
+                >
+                  Não sei meu CEP
+                </a>
+              </div>
+
+              <form onSubmit={handleCalculateShipping} className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={cep}
+                    onChange={(e) => setCep(formatCep(e.target.value))}
+                    placeholder="Digite seu CEP (ex: 01310-100)"
+                    maxLength={9}
+                    className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-neon-cyan/50 focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSearchingCep}
+                  className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-neon-cyan px-4 text-xs font-bold text-background hover:opacity-90 disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]"
+                >
+                  {isSearchingCep ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Calculando...</span>
+                    </>
+                  ) : (
+                    <span>Calcular</span>
+                  )}
+                </button>
+              </form>
+
+              {/* Resultado da Consulta de CEP & Opções de Envio */}
+              {addressResult && shippingOptions.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5 text-neon-cyan shrink-0" />
+                    <span>
+                      Destino: <strong className="text-foreground">{addressResult.localidade} - {addressResult.uf}</strong>
+                      {addressResult.bairro ? ` (${addressResult.bairro})` : ""}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-2 pt-1">
+                    {shippingOptions.map((opt) => {
+                      const isSelected = selectedShipping?.id === opt.id;
+                      return (
+                        <div
+                          key={opt.id}
+                          onClick={() => setSelectedShipping(opt)}
+                          className={`cursor-pointer rounded-xl border p-3 flex items-center justify-between transition-all ${
+                            isSelected
+                              ? "border-neon-cyan bg-neon-cyan/10 shadow-[0_0_15px_rgba(0,240,255,0.15)]"
+                              : "border-white/10 bg-white/5 hover:border-white/20"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <input
+                              type="radio"
+                              name="shipping_option"
+                              checked={isSelected}
+                              onChange={() => setSelectedShipping(opt)}
+                              className="h-4 w-4 accent-neon-cyan"
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-foreground">{opt.name}</span>
+                                {opt.badge && (
+                                  <span className={`rounded-full px-1.5 py-0.2 text-[9px] font-black ${
+                                    opt.price === 0
+                                      ? "bg-neon-green/20 text-neon-green border border-neon-green/40"
+                                      : "bg-white/10 text-neon-yellow"
+                                  }`}>
+                                    {opt.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <Clock className="h-3 w-3" />
+                                {opt.deliveryDaysMin === 0
+                                  ? "Disponível para retirada imediata"
+                                  : `Prazo estimado: ${opt.deliveryDaysMin} a ${opt.deliveryDaysMax} dias úteis`}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <span className={`text-xs font-black ${opt.price === 0 ? "text-neon-green" : "text-foreground"}`}>
+                              {opt.price === 0 ? "GRÁTIS" : formatBRL(opt.price)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

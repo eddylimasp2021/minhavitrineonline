@@ -53,6 +53,24 @@ export interface LiveOrder {
   status: "paid" | "pending" | "processing";
   createdAt: number;
   formattedTime: string;
+  shippingOption?: {
+    id: string;
+    name: string;
+    carrier: string;
+    price: number;
+    deliveryDaysMin: number;
+    deliveryDaysMax: number;
+  };
+  shippingFee?: number;
+  shippingAddress?: {
+    cep: string;
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+  };
 }
 
 export interface LiveSession {

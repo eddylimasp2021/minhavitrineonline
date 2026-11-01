@@ -48,6 +48,9 @@ import {
   Lock,
   EyeOff,
   User,
+  Truck,
+  MapPin,
+  Loader2,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,7 +71,8 @@ import {
   INITIAL_LIVE_SESSIONS,
   INITIAL_CHAT_MESSAGES,
 } from "@/lib/live-commerce";
-import { formatBRL, normalizeWhatsAppNumber, WHATSAPP_NUMBER } from "@/lib/mock-data";
+import { formatBRL, normalizeWhatsAppNumber, WHATSAPP_NUMBER, isDigitalType } from "@/lib/mock-data";
+import { formatCep, lookupCep, calculateShippingOptions, ShippingOption, CepAddress } from "@/lib/shipping";
 
 export const Route = createFileRoute("/live")({
   head: () => ({
@@ -115,6 +119,16 @@ function LiveShoppingPage() {
   const [customerCheckoutName, setCustomerCheckoutName] = useState("");
   const [customerCheckoutPhone, setCustomerCheckoutPhone] = useState("");
   const [cartPaymentStep, setCartPaymentStep] = useState<"review" | "pix">("review");
+
+  // Estados de Frete & Entrega no Carrinho da Live
+  const [cartCep, setCartCep] = useState("");
+  const [isSearchingCartCep, setIsSearchingCartCep] = useState(false);
+  const [cartAddress, setCartAddress] = useState<CepAddress | null>(null);
+  const [cartShippingOptions, setCartShippingOptions] = useState<ShippingOption[]>([]);
+  const [selectedLiveShipping, setSelectedLiveShipping] = useState<ShippingOption | null>(null);
+  const [customerStreetNumber, setCustomerStreetNumber] = useState("");
+  const [customerStreetComplement, setCustomerStreetComplement] = useState("");
+
   const [latestPurchase, setLatestPurchase] = useState<{
     id: string;
     buyerName: string;
@@ -443,14 +457,69 @@ function LiveShoppingPage() {
     toast.info("Item removido do carrinho");
   };
 
-  const cartTotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
+  const hasPhysicalProducts = cart.some(
+    (item) => item.product.productType === "physical" || item.product.productType === "fisico" || !isDigitalType(item.product.productType)
+  );
+
+  const cartSubtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
+  const cartShippingFee = selectedLiveShipping ? selectedLiveShipping.price : 0;
+  const cartTotal = cartSubtotal + cartShippingFee;
   const cartItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  const handleCalculateCartShipping = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = cartCep.replace(/\D/g, "");
+    if (clean.length !== 8) {
+      toast.error("Digite um CEP válido com 8 números.");
+      return;
+    }
+    setIsSearchingCartCep(true);
+    try {
+      const addr = await lookupCep(clean);
+      if (addr) {
+        setCartAddress(addr);
+        const options = calculateShippingOptions(addr.uf, cartSubtotal);
+        setCartShippingOptions(options);
+        setSelectedLiveShipping(options[0]);
+        toast.success(`Frete calculado para ${addr.localidade} - ${addr.uf}!`);
+      } else {
+        toast.error("CEP não localizado. Verifique os números digitados.");
+      }
+    } catch {
+      toast.error("Erro ao calcular frete. Tente novamente.");
+    } finally {
+      setIsSearchingCartCep(false);
+    }
+  };
 
   const handleFinishCartOrder = (method: "pix" | "card" | "whatsapp") => {
     if (cart.length === 0) return;
     const name = customerCheckoutName.trim() || userName.trim() || "Cliente Ao Vivo";
     const phone = customerCheckoutPhone.trim() || "(11) 99999-9999";
     const orderId = `PED-${Math.floor(Math.random() * 9000 + 1000)}`;
+
+    const shippingData = selectedLiveShipping && cartAddress
+      ? {
+          shippingOption: {
+            id: selectedLiveShipping.id,
+            name: selectedLiveShipping.name,
+            carrier: selectedLiveShipping.carrier,
+            price: selectedLiveShipping.price,
+            deliveryDaysMin: selectedLiveShipping.deliveryDaysMin,
+            deliveryDaysMax: selectedLiveShipping.deliveryDaysMax,
+          },
+          shippingFee: selectedLiveShipping.price,
+          shippingAddress: {
+            cep: cartAddress.cep,
+            street: cartAddress.logradouro,
+            number: customerStreetNumber.trim() || "S/N",
+            complement: customerStreetComplement.trim() || undefined,
+            neighborhood: cartAddress.bairro,
+            city: cartAddress.localidade,
+            state: cartAddress.uf,
+          },
+        }
+      : {};
 
     const newOrder: LiveOrder = {
       id: orderId,
@@ -462,6 +531,7 @@ function LiveShoppingPage() {
       status: "paid",
       createdAt: Date.now(),
       formattedTime: "Agora",
+      ...shippingData,
     };
 
     const updatedOrders = [newOrder, ...orders];
@@ -494,13 +564,17 @@ function LiveShoppingPage() {
     const itemsSummary = cart.map((i) => `• ${i.quantity}x ${i.product.title} (${formatBRL(i.unitPrice)})`).join("\n");
     const orderTotal = cartTotal;
 
+    const shippingInfoMsg = selectedLiveShipping && cartAddress
+      ? `\n\n*Envio / Frete:*\n• Modalidade: ${selectedLiveShipping.name} (${formatBRL(selectedLiveShipping.price)})\n• Prazo Estimado: ${selectedLiveShipping.deliveryDaysMin} a ${selectedLiveShipping.deliveryDaysMax} dias úteis\n• Endereço: ${cartAddress.logradouro}, ${customerStreetNumber || "S/N"}${customerStreetComplement ? ` (${customerStreetComplement})` : ""} - ${cartAddress.bairro}, ${cartAddress.localidade}/${cartAddress.uf} - CEP: ${cartAddress.cep}`
+      : "";
+
     // Limpa carrinho
     setCart([]);
     saveLiveCart([]);
 
     if (method === "whatsapp") {
       const text = encodeURIComponent(
-        `🛍️ *NOVO PEDIDO DA LIVE SHOPPING*\n\n*Cliente:* ${name}\n*Telefone:* ${phone}\n*Pedido:* #${orderId}\n\n*Itens Comprados:*\n${itemsSummary}\n\n*Total:* ${formatBRL(orderTotal)}\n*Forma:* WhatsApp / PIX Instantâneo\n\nOlá, acabei de fechar esse pedido na Live e quero confirmar o pagamento!`
+        `🛍️ *NOVO PEDIDO DA LIVE SHOPPING*\n\n*Cliente:* ${name}\n*Telefone:* ${phone}\n*Pedido:* #${orderId}\n\n*Itens Comprados:*\n${itemsSummary}\n\n*Subtotal:* ${formatBRL(cartSubtotal)}${selectedLiveShipping ? `\n*Frete (${selectedLiveShipping.name}):* ${formatBRL(selectedLiveShipping.price)}` : ""}\n*Total Final:* ${formatBRL(orderTotal)}${shippingInfoMsg}\n*Forma:* WhatsApp / PIX Instantâneo\n\nOlá, acabei de fechar esse pedido na Live e quero confirmar o pagamento e envio!`
       );
       const url = `https://wa.me/${normalizeWhatsAppNumber(WHATSAPP_NUMBER)}?text=${text}`;
       window.open(url, "_blank");
@@ -509,7 +583,7 @@ function LiveShoppingPage() {
     } else if (method === "card") {
       setIsCartOpen(false);
       toast.success("Redirecionando para o pagamento seguro no Cartão...");
-      const cardMsg = `Olá! Acabei de fechar o pedido #${orderId} na live (${formatBRL(orderTotal)}) e quero efetuar o pagamento via Cartão de Crédito. Pode me enviar o link de pagamento?`;
+      const cardMsg = `Olá! Acabei de fechar o pedido #${orderId} na live (${formatBRL(orderTotal)}) e quero efetuar o pagamento via Cartão de Crédito.${shippingInfoMsg}\n\nPode me enviar o link de pagamento?`;
       const url = `https://wa.me/${normalizeWhatsAppNumber(WHATSAPP_NUMBER)}?text=${encodeURIComponent(cardMsg)}`;
       window.open(url, "_blank");
     } else if (method === "pix") {
@@ -1584,6 +1658,27 @@ function LiveShoppingPage() {
                             ))}
                           </div>
 
+                          {/* Detalhes de Envio / Frete para Produtos Físicos */}
+                          {order.shippingOption && (
+                            <div className="rounded-xl border border-neon-cyan/20 bg-neon-cyan/5 p-2 text-[11px] space-y-1">
+                              <div className="flex items-center justify-between text-neon-cyan font-bold">
+                                <span className="flex items-center gap-1">
+                                  <Truck className="h-3 w-3" /> {order.shippingOption.name}
+                                </span>
+                                <span>{order.shippingFee === 0 ? "Grátis" : formatBRL(order.shippingFee ?? 0)}</span>
+                              </div>
+                              {order.shippingAddress && (
+                                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 shrink-0 text-neon-cyan" />
+                                  <span>
+                                    {order.shippingAddress.street}, {order.shippingAddress.number}
+                                    {order.shippingAddress.complement ? ` (${order.shippingAddress.complement})` : ""} - {order.shippingAddress.neighborhood}, {order.shippingAddress.city}/{order.shippingAddress.state} • CEP {order.shippingAddress.cep}
+                                  </span>
+                                </p>
+                              )}
+                            </div>
+                          )}
+
                           {/* Ações do Apresentador */}
                           <div className="flex items-center justify-end gap-2 pt-1 border-t border-white/5">
                             <button
@@ -1891,6 +1986,123 @@ function LiveShoppingPage() {
                     ))}
                   </div>
 
+                  {/* Bloco de Cálculo de Frete para Produtos Físicos */}
+                  {hasPhysicalProducts && (
+                    <div className="mt-3 rounded-2xl border border-neon-cyan/30 bg-neon-cyan/5 p-3 space-y-2 shrink-0 animate-fade-up">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-neon-cyan flex items-center gap-1.5">
+                          <Truck className="h-3.5 w-3.5" /> Frete & Entrega (Correios / Transportadora):
+                        </span>
+                        <a
+                          href="https://buscacepinter.correios.com.br/app/cep/index.php"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-muted-foreground hover:text-white underline"
+                        >
+                          Não sei meu CEP
+                        </a>
+                      </div>
+
+                      <form onSubmit={handleCalculateCartShipping} className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={cartCep}
+                          onChange={(e) => setCartCep(formatCep(e.target.value))}
+                          placeholder="CEP de entrega (00000-000)"
+                          maxLength={9}
+                          className="h-8 flex-1 rounded-xl border border-white/10 bg-black/40 px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-neon-cyan focus:outline-none"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSearchingCartCep}
+                          className="h-8 rounded-xl bg-neon-cyan px-3 text-xs font-bold text-background hover:opacity-90 disabled:opacity-50 flex items-center gap-1 shrink-0"
+                        >
+                          {isSearchingCartCep ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <span>Calcular</span>
+                          )}
+                        </button>
+                      </form>
+
+                      {/* Endereço & Opções de Envio */}
+                      {cartAddress && cartShippingOptions.length > 0 && (
+                        <div className="space-y-2 pt-1 border-t border-white/10">
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-neon-cyan shrink-0" />
+                            <span>
+                              {cartAddress.logradouro ? `${cartAddress.logradouro}, ` : ""}
+                              {cartAddress.bairro ? `${cartAddress.bairro} - ` : ""}
+                              <strong>{cartAddress.localidade}/{cartAddress.uf}</strong>
+                            </span>
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <input
+                              type="text"
+                              value={customerStreetNumber}
+                              onChange={(e) => setCustomerStreetNumber(e.target.value)}
+                              placeholder="Número da residência"
+                              className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-foreground focus:border-neon-cyan focus:outline-none"
+                            />
+                            <input
+                              type="text"
+                              value={customerStreetComplement}
+                              onChange={(e) => setCustomerStreetComplement(e.target.value)}
+                              placeholder="Complemento / Apto"
+                              className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-foreground focus:border-neon-cyan focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="grid gap-1.5 pt-1">
+                            {cartShippingOptions.map((opt) => {
+                              const isSel = selectedLiveShipping?.id === opt.id;
+                              return (
+                                <div
+                                  key={opt.id}
+                                  onClick={() => setSelectedLiveShipping(opt)}
+                                  className={`cursor-pointer rounded-xl border p-2 flex items-center justify-between transition-all ${
+                                    isSel
+                                      ? "border-neon-cyan bg-neon-cyan/15 shadow-sm"
+                                      : "border-white/10 bg-black/30 hover:border-white/20"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="radio"
+                                      name="live_cart_shipping"
+                                      checked={isSel}
+                                      onChange={() => setSelectedLiveShipping(opt)}
+                                      className="h-3.5 w-3.5 accent-neon-cyan"
+                                    />
+                                    <div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-bold text-foreground">{opt.name}</span>
+                                        {opt.badge && (
+                                          <span className="rounded bg-white/10 px-1 py-0.2 text-[8px] font-bold text-neon-yellow">
+                                            {opt.badge}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground block">
+                                        {opt.deliveryDaysMin === 0
+                                          ? "Retirada imediata"
+                                          : `${opt.deliveryDaysMin} a ${opt.deliveryDaysMax} dias úteis`}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className={`text-[11px] font-black ${opt.price === 0 ? "text-neon-green" : "text-foreground"}`}>
+                                    {opt.price === 0 ? "GRÁTIS" : formatBRL(opt.price)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Dados do Comprador */}
                   <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 space-y-2 shrink-0">
                     <span className="text-[11px] font-bold text-foreground block">Identificação para Entrega/Licença:</span>
@@ -1915,10 +2127,22 @@ function LiveShoppingPage() {
                   {/* Resumo de Valores */}
                   <div className="mt-3 border-t border-white/10 pt-3 space-y-1 shrink-0">
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Total de Itens:</span>
-                      <span>{cartItemsCount} unidades</span>
+                      <span>Subtotal dos Produtos:</span>
+                      <span>{formatBRL(cartSubtotal)}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-black text-foreground">
+                    {hasPhysicalProducts && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Frete de Entrega:</span>
+                        {selectedLiveShipping ? (
+                          <span className={selectedLiveShipping.price === 0 ? "text-neon-green font-bold" : "text-foreground font-semibold"}>
+                            {selectedLiveShipping.price === 0 ? "GRÁTIS" : formatBRL(selectedLiveShipping.price)}
+                          </span>
+                        ) : (
+                          <span className="text-neon-yellow text-[11px]">Calcular acima</span>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-black text-foreground pt-1 border-t border-white/5">
                       <span>Total do Pedido:</span>
                       <span className="text-neon-green text-base">{formatBRL(cartTotal)}</span>
                     </div>
