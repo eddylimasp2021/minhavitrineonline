@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const AUTH_FILE = path.join(process.cwd(), '.vercel_auth.json');
+const CLIENT_ID = 'cl_HYyOPBNtFMfHhaUn9L4QPfTZz6TP47bp';
 
 async function getAuth() {
   if (!fs.existsSync(AUTH_FILE)) {
@@ -11,10 +12,29 @@ async function getAuth() {
   return JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
 }
 
-async function api(endpoint, options = {}) {
-  const auth = await getAuth();
-  const token = auth.access_token;
-  const res = await fetch(`https://api.vercel.com${endpoint}`, {
+async function refreshAuthToken(auth) {
+  if (!auth.refresh_token) return null;
+  const res = await fetch('https://api.vercel.com/login/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: CLIENT_ID,
+      grant_type: 'refresh_token',
+      refresh_token: auth.refresh_token
+    }).toString()
+  });
+  const data = await res.json().catch(() => null);
+  if (res.ok && data?.access_token) {
+    fs.writeFileSync(AUTH_FILE, JSON.stringify(data, null, 2), 'utf8');
+    return data;
+  }
+  return null;
+}
+
+async function api(endpoint, options = {}, isRetry = false) {
+  let auth = await getAuth();
+  let token = auth.access_token;
+  let res = await fetch(`https://api.vercel.com${endpoint}`, {
     ...options,
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -22,7 +42,13 @@ async function api(endpoint, options = {}) {
       ...(options.headers || {})
     }
   });
-  const data = await res.json().catch(() => null);
+  let data = await res.json().catch(() => null);
+  if (!res.ok && (res.status === 401 || res.status === 403) && !isRetry) {
+    const newAuth = await refreshAuthToken(auth);
+    if (newAuth) {
+      return api(endpoint, options, true);
+    }
+  }
   if (!res.ok) {
     throw new Error(`API Error [${res.status}] ${endpoint}: ${JSON.stringify(data)}`);
   }
